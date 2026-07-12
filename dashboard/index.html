@@ -33,6 +33,7 @@
   .stamp{color:var(--ink-2);font-size:12.5px;text-align:right}
   .stamp b{color:var(--ink-1);font-weight:600}
   .stamp .stale{color:var(--band-5);font-weight:650}
+  .stamp .quiet{color:var(--band-3);font-weight:600}
   button{font:inherit;font-size:12.5px;padding:5px 12px;border:1px solid var(--ring);
     border-radius:7px;background:var(--surface-1);color:var(--ink-1);cursor:pointer}
   button:hover{border-color:var(--baseline)}
@@ -72,7 +73,7 @@
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   tr:hover td{background:var(--band-0-wash)}
   .chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
-    font-weight:650;font-size:12px;color:#fff}
+    font-weight:650;font-size:12px}
   .mmbar{display:inline-block;height:8px;border-radius:4px;background:var(--seq-450);
     vertical-align:middle;margin-right:6px;min-width:2px}
   .trend{font-weight:650;white-space:nowrap}
@@ -83,6 +84,8 @@
 
   .failbar{display:none;padding:12px 16px;border-radius:10px;margin-bottom:14px;
     background:var(--band-5-wash);border:1px solid var(--band-5);color:var(--ink-1);font-weight:600}
+  .seasonbar{display:none;padding:10px 16px;border-radius:10px;margin-bottom:14px;
+    background:var(--surface-1);border:1px solid var(--ring);color:var(--ink-2);font-size:13px}
   footer{color:var(--ink-muted);font-size:11.5px;margin-top:14px}
   .spark{vertical-align:middle}
 </style>
@@ -101,6 +104,7 @@
 </header>
 
 <div class="failbar" id="failbar">⚠ DATA UNAVAILABLE — the feed could not be reached. You have <u>no visibility</u>; do not assume "no rain". Retry or use field reports.</div>
+<div class="seasonbar" id="seasonbar">ℹ Off-season (Nov–Apr): rainfall is not measured. Quiet readings mean the feed is inactive, not dry conditions.</div>
 
 <div class="alertbar" id="alertbar">
   <div class="lvl" id="alertLvl">–</div>
@@ -179,26 +183,55 @@ function initMap(){
   if (typeof L === "undefined"){ document.getElementById("map").innerHTML =
     "<div style='padding:20px;color:var(--ink-2)'>Map library unavailable (offline?) — station table remains authoritative.</div>"; return; }
   map = L.map("map",{scrollWheelZoom:false}).setView([53.545,-113.50],10);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    {attribution:"&copy; OpenStreetMap", maxZoom:16}).addTo(map);
+  // CARTO Positron: near-monochrome basemap so the diverging markers carry the color
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    {attribution:"&copy; OpenStreetMap &copy; CARTO", subdomains:"abcd", maxZoom:16}).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
 }
 
 // ---------- session trend buffer ----------
-function loadBuf(){ try{ return JSON.parse(localStorage.getItem(BUF_KEY))||[] }catch(e){ return [] } }
+// In-memory buffer is the source of truth; localStorage is only persistence across reloads.
+// (A private/locked-down browser must still build trends while the tab stays open.)
+let memBuf = null, persistOK = true;
+function loadBuf(){
+  if (memBuf) return memBuf;
+  try{ memBuf = JSON.parse(localStorage.getItem(BUF_KEY))||[] }catch(e){ memBuf = [] }
+  return memBuf;
+}
 function pushBuf(stations){
   const now = Date.now();
   let buf = loadBuf().filter(s => now - s.t < 24*3600*1000);
   if (!buf.length || now - buf[buf.length-1].t > 2*60*1000){
     const snap = {t:now, st:{}};
-    stations.forEach(s => snap.st[s.station] = [s.mm, s.rating]);
+    stations.forEach(s => { if (s.hasReading) snap.st[s.station] = [s.mm, s.rating] });
     buf.push(snap);
-    try{ localStorage.setItem(BUF_KEY, JSON.stringify(buf)) }catch(e){}
   }
+  memBuf = buf;
+  try{ localStorage.setItem(BUF_KEY, JSON.stringify(buf)); persistOK = true }
+  catch(e){ persistOK = false }
   return buf;
 }
+// every station seen in the buffer window — the roster a vanished gauge is diffed against
+function knownStations(){
+  const set = new Set();
+  loadBuf().forEach(s => Object.keys(s.st).forEach(k => set.add(k)));
+  return set;
+}
+// coords memory so a station that drops out of the feed can still be shown on the map
+const META_KEY = "edm_station_meta_v1";
+let stationMeta = null;
+function loadMeta(){
+  if (stationMeta) return stationMeta;
+  try{ stationMeta = JSON.parse(localStorage.getItem(META_KEY))||{} }catch(e){ stationMeta = {} }
+  return stationMeta;
+}
+function rememberStations(stations){
+  const m = loadMeta();
+  stations.forEach(s => { if (s.lat!=null) m[s.station] = {lat:s.lat, lon:s.lon} });
+  try{ localStorage.setItem(META_KEY, JSON.stringify(m)) }catch(e){}
+}
 // compare latest reading vs snapshot ~45 min back (or oldest available)
-function trendFor(buf, station, curMm){
+function trendFor(buf, station, curMm, curRating){
   if (buf.length < 2) return null;
   const now = Date.now();
   let base = buf[0];
@@ -206,8 +239,15 @@ function trendFor(buf, station, curMm){
   if (base === buf[buf.length-1]) base = buf[0];
   const prev = base.st[station];
   if (!prev) return null;
-  const d = curMm - prev[0];
+  const d = (Number.isFinite(curMm)? curMm : prev[0]) - prev[0];
   const mins = Math.round((now - base.t)/60000);
+  // a rating change outranks the mm threshold — an escalation on little new rain is
+  // exactly the "rising 3s are the next 5s" signal the supervisor pre-positions on
+  if (prev[1]!=null && Number.isFinite(curRating) && curRating !== prev[1]){
+    const up = curRating > prev[1];
+    return {dir: up? "▲ rising":"▼ falling", d, mins,
+            color: up? "var(--band-5)":"var(--band-0)", note:`rating ${prev[1]}→${curRating}`};
+  }
   if (d > 0.4)  return {dir:"▲ rising",  d, mins, color:"var(--band-5)"};
   if (d < -0.4) return {dir:"▼ falling", d, mins, color:"var(--band-0)"};
   return {dir:"— steady", d, mins, color:"var(--ink-muted)"};
@@ -252,53 +292,77 @@ function sparkline(buf, station){
 // ---------- render ----------
 function render(rows){
   const now = Date.now();
-  const stations = rows.map(r => ({
-    station: r.station,
-    mm: parseFloat(r._24h_total)||0,
-    rating: parseInt(r.storm_rating,10)||0,
-    desc: r.storm_rating_description||"",
-    lat: r.location? parseFloat(r.location.latitude):null,
-    lon: r.location? parseFloat(r.location.longitude):null,
-    upd: r[":updated_at"]? new Date(r[":updated_at"]) : null
-  })).sort((a,b)=> b.rating-a.rating || b.mm-a.mm);
+  // NaN = "no reading", never 0 — a ||0 fallback would dress absence up as calm
+  const num = v => { const n = parseFloat(v); return Number.isFinite(n)? n : NaN; };
+  const stations = rows.map(r => {
+    const mm = num(r._24h_total), rating = num(r.storm_rating);
+    return {
+      station: r.station, mm, rating,
+      hasReading: Number.isFinite(mm) && Number.isFinite(rating),
+      desc: r.storm_rating_description||"",
+      lat: r.location? parseFloat(r.location.latitude):null,
+      lon: r.location? parseFloat(r.location.longitude):null,
+      upd: r[":updated_at"]? new Date(r[":updated_at"]) : null
+    };
+  }).sort((a,b)=> (b.hasReading?b.rating:999)-(a.hasReading?a.rating:999) || (b.mm||0)-(a.mm||0));
 
   const buf = pushBuf(stations);
+  rememberStations(stations);
+  // roster diff: the publisher replaces the whole table each publish, so a dead gauge
+  // disappears as a MISSING ROW — diff against every station seen in the buffer window
+  const present = new Set(stations.map(s=>s.station));
+  const missing = [...knownStations()].filter(id => !present.has(id)).sort();
+  const noReading = stations.filter(s=>!s.hasReading).map(s=>s.station);
+  const blind = [...missing, ...noReading];
+  const withReading = stations.filter(s=>s.hasReading);
 
-  // stamp + freshness
+  // stamp + freshness — the publish stamp is batch-level (all rows share it), so
+  // feed-wide quiet is one header condition, not 23 per-row alarms
   const newest = stations.reduce((m,s)=> s.upd && (!m||s.upd>m)? s.upd:m, null);
+  if (newest){ lastGoodStamp = newest; failSince = null; }
   const ageMin = newest? Math.round((now-newest)/60000) : null;
-  const staleAll = ageMin!==null && ageMin>STALE_MIN;
+  const quiet = ageMin!==null && ageMin>STALE_MIN;
   document.getElementById("stamp").innerHTML =
     "Data as of <b>" + (newest? newest.toLocaleString("en-CA",{timeZone:"America/Edmonton",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "unknown") +
-    " MT</b>" + (ageMin!==null? (staleAll? ` <span class="stale">(${ageMin} min old — STALE)</span>` : ` (${ageMin} min ago)`) : "") +
+    " MT</b>" + (ageMin!==null? (quiet? `<br><span class="quiet">feed quiet ${ageMin} min — normal once rain stops; if it is raining now, treat as outage</span>` : ` (${ageMin} min ago)`) : "") +
     "<br>next auto-refresh in <span id='cd'>5:00</span>";
 
-  // citywide alert
-  const maxR = Math.max(...stations.map(s=>s.rating));
-  const top = stations[0], band = bandOf(maxR);
+  // citywide alert — computed over stations WITH readings; blind spots are surfaced
+  // alongside it, never allowed to lower it silently
   const ab = document.getElementById("alertbar");
-  ab.style.background = band.wash; ab.style.borderColor = band.color;
-  document.getElementById("alertLvl").textContent = maxR;
-  document.getElementById("alertLvl").style.color = band.color;
-  document.getElementById("alertBand").textContent =
-    `${band.icon} Citywide alert: ${band.name.toUpperCase()} — ${band.action}`;
-  document.getElementById("alertDesc").textContent =
-    `Worst station ${top.station}: "${top.desc}"`;
+  if (withReading.length){
+    const maxR = Math.max(...withReading.map(s=>s.rating));
+    const top = withReading[0], band = bandOf(maxR);
+    ab.style.background = band.wash; ab.style.borderColor = band.color;
+    document.getElementById("alertLvl").textContent = maxR;
+    document.getElementById("alertLvl").style.color = band.color;
+    document.getElementById("alertBand").textContent =
+      `${band.icon} Citywide alert: ${band.name.toUpperCase()} — ${band.action}`;
+    document.getElementById("alertDesc").innerHTML =
+      `Worst station ${top.station}: "${top.desc}"` +
+      (blind.length? `<br><b style="color:var(--band-5)">⚠ No visibility at ${blind.join(", ")} — blind spot, not calm.</b>` : "");
+  } else {
+    ab.style.background = "var(--band-5-wash)"; ab.style.borderColor = "var(--band-5)";
+    document.getElementById("alertLvl").textContent = "?";
+    document.getElementById("alertLvl").style.color = "var(--band-5)";
+    document.getElementById("alertBand").textContent = "⚠ NO VISIBILITY — no station is reporting a usable reading";
+    document.getElementById("alertDesc").textContent = "Do not assume calm. Use field reports.";
+  }
 
-  // KPIs
-  const peak = stations.reduce((m,s)=> s.mm>m.mm? s:m, stations[0]);
-  document.getElementById("kpiPeak").textContent = fmtMm(peak.mm);
-  document.getElementById("kpiPeakN").textContent = "at "+peak.station;
-  const nDisp = stations.filter(s=>s.rating>=4).length;
-  document.getElementById("kpiDispatch").textContent = nDisp;
-  document.getElementById("kpiDispatchN").textContent = nDisp? stations.filter(s=>s.rating>=4).map(s=>s.station).join(", ") : "none";
-  const trends = stations.map(s=>({s, t:trendFor(buf,s.station,s.mm)}));
+  // KPIs — over stations with readings only
+  const peak = withReading.length? withReading.reduce((m,s)=> s.mm>m.mm? s:m, withReading[0]) : null;
+  document.getElementById("kpiPeak").textContent = peak? fmtMm(peak.mm) : "–";
+  document.getElementById("kpiPeakN").textContent = peak? "at "+peak.station : "no readings";
+  const disp = withReading.filter(s=>s.rating>=4);
+  document.getElementById("kpiDispatch").textContent = disp.length;
+  document.getElementById("kpiDispatchN").textContent = disp.length? disp.map(s=>s.station).join(", ") : "none";
+  const trends = stations.map(s=>({s, t: s.hasReading? trendFor(buf,s.station,s.mm,s.rating) : null}));
   const rising = trends.filter(x=>x.t && x.t.dir.includes("rising"));
   document.getElementById("kpiRising").textContent = buf.length<2? "–" : rising.length;
   document.getElementById("kpiRisingN").textContent = buf.length<2? "need 2+ snapshots" :
       (rising.length? rising.map(x=>x.s.station).join(", ") : "none rising");
   // storm shape: hot = rating>=3
-  const hot = stations.filter(s=>s.rating>=3 && s.lat!=null);
+  const hot = withReading.filter(s=>s.rating>=3 && s.lat!=null);
   let shape="Quiet", shapeN="no station at Monitor or above";
   if (hot.length){
     const latSpread = Math.max(...hot.map(s=>s.lat))-Math.min(...hot.map(s=>s.lat));
@@ -312,7 +376,7 @@ function render(rows){
 
   // band strip
   document.getElementById("bands").innerHTML = BANDS.map(b=>{
-    const inBand = stations.filter(s=>s.rating>=b.min && s.rating<=b.max);
+    const inBand = withReading.filter(s=>s.rating>=b.min && s.rating<=b.max);
     return `<div class="band" style="border-left-color:${b.color};${inBand.length&&b.min>=3? 'background:'+b.wash:''}">
       <div class="bn"><span>${b.icon} ${b.name}</span><span style="color:var(--ink-muted);font-weight:500">r ${b.min===0?'0–2':(b.max>8?'6+':b.min)}</span></div>
       <div class="bc">${inBand.length}</div>
@@ -320,30 +384,56 @@ function render(rows){
       <div class="ba">${b.action}</div></div>`;
   }).join("");
 
-  // table
-  const maxMm = Math.max(1, ...stations.map(s=>s.mm));
-  document.querySelector("#tbl tbody").innerHTML = trends.map(({s,t})=>{
-    const b = bandOf(s.rating);
+  // table — blind spots (vanished or unreadable stations) pinned on top, styled as such;
+  // per-row age is shown plain: the stamp is batch-level, so it is context, not an alarm
+  const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
+  const missingRows = missing.map(id => `<tr class="blind">
+      <td><b>${id}</b></td>
+      <td class="num">—</td>
+      <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
+      <td><span style="color:var(--ink-muted)">—</span></td>
+      <td class="desc-cell"><b>No visibility</b> — station dropped from the feed this session. Blind spot, not calm.</td>
+      <td class="num age-stale">⚠ gone</td>
+    </tr>`).join("");
+  document.querySelector("#tbl tbody").innerHTML = missingRows + trends.map(({s,t})=>{
+    if (!s.hasReading) return `<tr class="blind">
+      <td><b>${s.station}</b></td>
+      <td class="num">—</td>
+      <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
+      <td><span style="color:var(--ink-muted)">—</span></td>
+      <td class="desc-cell"><b>No usable reading</b> — value missing or malformed. Blind spot, not calm.</td>
+      <td class="num age-stale">⚠</td>
+    </tr>`;
+    const b = bandOf(s.rating), chipBg = MARKER_HEX[b.name];
     const age = s.upd? Math.round((now-s.upd)/60000) : null;
-    const stale = age===null || age>STALE_MIN;
-    return `<tr class="${stale?'blind':''}">
+    return `<tr>
       <td><b>${s.station}</b></td>
       <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*70).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
-      <td><span class="chip" style="background:${MARKER_HEX[b.name]}">${b.icon} ${s.rating} ${b.name}</span></td>
-      <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">buffering…</span>`}</td>
+      <td><span class="chip" style="background:${chipBg};color:${inkOn(chipBg)}">${b.icon} ${s.rating} ${b.name}</span></td>
+      <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m${t.note? ' · '+t.note : ''}</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">buffering…</span>`}</td>
       <td class="desc-cell">${s.desc}</td>
-      <td class="num ${stale?'age-stale':'age-ok'}">${age===null? "⚠ no stamp" : (stale? "⚠ "+age+" min — blind spot" : age+" min")}</td>
+      <td class="num age-ok">${age===null? "no stamp" : age+" min"}</td>
     </tr>`;
   }).join("");
   const snaps = buf.length, span = snaps>1? Math.round((buf[buf.length-1].t-buf[0].t)/60000):0;
-  document.getElementById("trendNote").textContent = snaps<2?
+  document.getElementById("trendNote").textContent = (snaps<2?
     "Trend requires 2+ refreshes — leave this page open; it refreshes every 5 min." :
-    `Session trend: ${snaps} snapshots over ${span} min (this browser only — not official history).`;
+    `Session trend: ${snaps} snapshots over ${span} min (this browser only — not official history).`) +
+    (persistOK? "" : " ⚠ Browser storage unavailable — trend lives in this tab only and will not survive a reload.");
 
   // map
   if (map && markerLayer){
     markerLayer.clearLayers();
+    const ghost = (id, lat, lon, why) => {
+      const g = L.marker([lat,lon],{icon: L.divIcon({className:"",
+        html:`<div style="width:30px;height:30px;border-radius:50%;background:rgba(137,135,129,.35);
+          border:2px dashed #6b6a64;color:#3a3935;font:700 15px/26px system-ui;text-align:center">?</div>`,
+        iconSize:[30,30], iconAnchor:[15,15]})});
+      g.bindPopup(`<b>${id}</b> — ⚠ no visibility<br>${why}<br>Blind spot, not calm.`);
+      markerLayer.addLayer(g);
+    };
     stations.filter(s=>s.lat!=null).forEach(s=>{
+      if (!s.hasReading){ ghost(s.station, s.lat, s.lon, "Reading missing or malformed in the feed."); return; }
       const b = bandOf(s.rating), fill = divColor(s.rating);
       const m = L.marker([s.lat,s.lon],{icon: L.divIcon({className:"",
         html:`<div style="width:30px;height:30px;border-radius:50%;background:${fill};
@@ -354,12 +444,16 @@ function render(rows){
         {maxWidth:320});
       markerLayer.addLayer(m);
     });
+    // vanished stations: place from remembered coords so the hole in coverage is visible
+    const meta = loadMeta();
+    missing.forEach(id => { if (meta[id]) ghost(id, meta[id].lat, meta[id].lon, "Station dropped from the feed this session."); });
   }
   document.getElementById("failbar").style.display="none";
 }
 
 // ---------- fetch loop ----------
 let cdEnd = Date.now()+REFRESH_MS;
+let lastGoodStamp = null, failSince = null;
 async function load(){
   try{
     const res = await fetch(API);
@@ -368,16 +462,19 @@ async function load(){
     if(!rows.length) throw new Error("empty response");
     render(rows);
   }catch(e){
+    // keep the last-known data-as-of visible: the numbers still on screen have an age,
+    // and erasing their timestamp would hide exactly what the supervisor needs to know
+    if (!failSince) failSince = Date.now();
     document.getElementById("failbar").style.display="block";
-    document.getElementById("stamp").innerHTML = "<span class='stale'>feed unreachable</span>";
+    const fmtT = d => new Date(d).toLocaleTimeString("en-CA",{timeZone:"America/Edmonton",hour:"2-digit",minute:"2-digit"});
+    document.getElementById("stamp").innerHTML = lastGoodStamp?
+      `Showing <b>last data: ${fmtT(lastGoodStamp)} MT</b> (${Math.round((Date.now()-lastGoodStamp)/60000)} min ago)<br><span class="stale">feed unreachable since ${fmtT(failSince)}</span><br>next retry in <span id='cd'>5:00</span>` :
+      "<span class='stale'>feed unreachable — no data received this session</span><br>next retry in <span id='cd'>5:00</span>";
     console.error(e);
   }
-  const month = new Date().getMonth()+1; // off-season note Nov–Apr
-  if (month>=11 || month<=4){
-    const fb=document.getElementById("failbar");
-    fb.style.display="block";
-    fb.innerHTML="ℹ Off-season (Nov–Apr): rainfall is not measured. Zeros/quiet readings mean the feed is inactive, not dry conditions.";
-  }
+  // off-season note lives in its own banner so it can never mask a real outage
+  const month = new Date().getMonth()+1;
+  document.getElementById("seasonbar").style.display = (month>=11 || month<=4)? "block" : "none";
   cdEnd = Date.now()+REFRESH_MS;
 }
 setInterval(()=>{ // countdown + auto-refresh
