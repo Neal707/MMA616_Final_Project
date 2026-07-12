@@ -37,9 +37,9 @@ against the source independently.
    `openPopup()` on a marker must show an SVG line with one path point per buffered reading and
    the "session data … not official history" caption; with a single-snapshot buffer it must show
    the "builds while the dashboard stays open" message instead of an empty plot.
-7. **Diverging marker scale** — marker fill by rating: 0 `#2a78d6`, 1 `#6da7ec`, 2 `#b7d3f6`,
-   3 `#9a9992` (gray pivot), 4 `#ec835a`, 5 `#d03b3b`, ≥6 `#8a1616`; rating number stays on the
-   marker (dark ink on the light fills).
+7. **Diverging marker scale (blue/red only — no gray pivot, per user preference)** — marker fill
+   by rating: 0 `#2a78d6`, 1 `#6da7ec`, 2 `#b7d3f6`, 3 `#f3a683`, 4 `#ec6b4a`, 5 `#d03b3b`,
+   ≥6 `#8a1616`; rating number stays on the marker (dark ink on the light fills).
 8. **Layout** — no horizontal page scroll; map has height; 4 KPI tiles; 5 band cards.
 
 ## Invariants to respect when editing the dashboard

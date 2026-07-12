@@ -76,6 +76,17 @@ Ratings 1, 7, 8 have not appeared in live data during this project; the dashboar
 
 ---
 
+## Companion datasets merged into the dashboard (evaluated 2026-07-12)
+
+| Dataset | Verdict | Use |
+|---|---|---|
+| `yhez-gf32` Drainage — Pump Stations | **Merged** (static context layer, default off) | 108 stations; filter `type in('STORM','COMBINED')` → 30 relevant. Rating-4 action is "pump checks" — shows which pumps sit near hot gauges |
+| `k4tx-5k8p` Traffic Disruptions | **Merged** (live context layer, default off, refreshed each cycle) | Filter `status in('Current','Emergency','Revised')`, keep `Total Closure` + any `Emergency`, date-window client-side. Closures already in effect change barricade/dispatch routing (~87 in effect + 3 emergencies at eval time) |
+| `ib2b-3mi4` Weather Data Hourly (ECCC) | **Rejected** | No precipitation field at all, and corrupt `date_and_time` values (max = year 57971) |
+| `cnsu-iagr` Water Levels and Flows | **Rejected** | Last row 2026-06-03 (a month stale at eval) and stations are provincial/upstream, not city drainage |
+| `7fus-qa4r` Rainfall Gauge Results | **Rejected** (see caution 10) | Daily grain, ends 2019, different gauge network |
+| 2014 Flood Mitigation Study layers | **Rejected** | GeoTIFF/map assets, not SODA-queryable |
+
 ## SoQL patterns
 
 ```

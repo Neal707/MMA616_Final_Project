@@ -126,11 +126,13 @@
 <div class="main">
   <div class="panel">
     <h2>Where it is raining hardest</h2>
-    <div class="note">Marker = gauge; number = storm rating. Color diverges around rating 3 (the coping/stressed pivot):
-      <span style="color:#2a78d6;font-weight:650">■ blue = system coping</span> ·
-      <span style="color:#82817a;font-weight:650">■ gray = watch (3)</span> ·
-      <span style="color:#d03b3b;font-weight:650">■ red = system stressed</span>.
-      Click a station for its 24h rainfall line. Readings apply at the gauge location only.</div>
+    <div class="note">Marker = gauge; number = storm rating. Color diverges at the coping/stressed boundary:
+      <span style="color:#2a78d6;font-weight:650">■ blue = system coping (0–2)</span> ·
+      <span style="color:#d03b3b;font-weight:650">■ red = system stressed (3+)</span>, deeper = further from the boundary.
+      Click a station for its 24h rainfall line. Readings apply at the gauge location only.
+      Context layers (toggle top-right): <b>P</b> = storm/combined pump station ·
+      <span style="color:#eda100;font-weight:700">!</span> = road disruption
+      (<span style="color:#d03b3b;font-weight:700">red = emergency</span>).</div>
     <div id="map"></div>
   </div>
   <div class="panel">
@@ -167,8 +169,9 @@ const BANDS = [
   {min:6,  max:99, name:"Escalate",  color:"var(--band-6)", wash:"var(--band-6-wash)", icon:"✖", action:"Notify Emergency Management; advisories"}
 ];
 const MARKER_HEX = {Normal:"#0ca30c",Monitor:"#fab219",Dispatch:"#ec835a",Barricade:"#d03b3b",Escalate:"#8a1616"};
-// Diverging map scale: blue arm (coping) <- gray pivot at rating 3 -> red arm (stressed)
-const DIV_HEX = {0:"#2a78d6",1:"#6da7ec",2:"#b7d3f6",3:"#9a9992",4:"#ec835a",5:"#d03b3b"};
+// Diverging map scale, blue/red only (user preference — no neutral midpoint):
+// blue arm = system coping (0–2, deeper = quieter), red arm = system stressed (3+, deeper = worse)
+const DIV_HEX = {0:"#2a78d6",1:"#6da7ec",2:"#b7d3f6",3:"#f3a683",4:"#ec6b4a",5:"#d03b3b"};
 const divColor = r => r>=6? "#8a1616" : (DIV_HEX[r] ?? "#9a9992");
 const inkOn = hex => { // dark text on light fills, white on deep ones
   const n=parseInt(hex.slice(1),16), L=.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255);
@@ -177,7 +180,7 @@ const inkOn = hex => { // dark text on light fills, white on deep ones
 const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
 const fmtMm = v => v.toFixed(1)+" mm";
 
-let map=null, markerLayer=null, timer=null;
+let map=null, markerLayer=null, pumpLayer=null, closureLayer=null, timer=null;
 
 function initMap(){
   if (typeof L === "undefined"){ document.getElementById("map").innerHTML =
@@ -187,6 +190,60 @@ function initMap(){
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     {attribution:"&copy; OpenStreetMap &copy; CARTO", subdomains:"abcd", maxZoom:16}).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
+  // context layers default OFF — the gauges are the primary read; pumps/closures are
+  // one click away when the supervisor is actually routing crews or barricades
+  pumpLayer = L.layerGroup();
+  closureLayer = L.layerGroup();
+  L.control.layers(null, {"Rain gauges":markerLayer, "Storm pump stations":pumpLayer,
+    "Road closures (live)":closureLayer}, {collapsed:false, position:"topright"}).addTo(map);
+  loadPumps();
+}
+
+// ---------- context layers (companion open datasets) ----------
+// Storm/combined pump stations (yhez-gf32) — static infrastructure; the rating-4 action
+// is "pump checks", so crews need to see which pumps sit near hot gauges
+async function loadPumps(){
+  if (!pumpLayer) return;
+  try{
+    const rows = await fetch("https://data.edmonton.ca/resource/yhez-gf32.json?$where=type in('STORM','COMBINED')&$limit=200").then(r=>r.json());
+    rows.forEach(p=>{
+      const lat=parseFloat(p.latitude), lon=parseFloat(p.longitude);
+      if (!Number.isFinite(lat)) return;
+      const m = L.marker([lat,lon],{icon: L.divIcon({className:"",
+        html:`<div style="width:14px;height:14px;border-radius:3px;background:#fff;border:2px solid #52514e;
+          color:#52514e;font:700 9px/11px system-ui;text-align:center">P</div>`, iconSize:[14,14], iconAnchor:[7,7]})});
+      m.bindPopup(`<b>Pump station</b> (${p.type})<br>${p.road_name||""}${p.neighbourhood_name? " · "+p.neighbourhood_name:""}`);
+      pumpLayer.addLayer(m);
+    });
+  }catch(e){ console.warn("pump layer unavailable", e); }
+}
+// Live traffic disruptions (k4tx-5k8p) — closures already in effect change where crews
+// and barricades can go; refreshed on every load cycle
+async function loadClosures(){
+  if (!closureLayer) return;
+  try{
+    const rows = await fetch("https://data.edmonton.ca/resource/k4tx-5k8p.json?$where=status in('Current','Emergency','Revised')&$limit=1000").then(r=>r.json());
+    closureLayer.clearLayers();
+    const now = Date.now();
+    // only what changes a barricade/dispatch route: full closures + emergencies, in effect now
+    rows.filter(d => d.point && d.point.coordinates &&
+        (d.status==="Emergency" || d.impact==="Total Closure") &&
+        (!d.start_date || Date.parse(d.start_date) <= now) &&
+        (!d.finish_date || Date.parse(d.finish_date) >= now - 24*3600*1000))
+      .forEach(d=>{
+        const [lon,lat] = d.point.coordinates;
+        const emerg = d.status==="Emergency";
+        const m = L.marker([lat,lon],{icon: L.divIcon({className:"",
+          html:`<div style="width:16px;height:16px;border-radius:50%;background:${emerg?"#d03b3b":"#eda100"};
+            border:2px solid #fff;color:#fff;font:700 11px/13px system-ui;text-align:center">!</div>`,
+          iconSize:[16,16], iconAnchor:[8,8]})});
+        m.bindPopup(`<b>${emerg? "⚠ EMERGENCY disruption":"Road disruption"}</b> — ${d.impact||"?"}<br>
+          ${d.on_street||""}${d.from_street? " ("+d.from_street+" → "+(d.to_street||"")+")":""}<br>
+          <i>${(d.details||d.description||"").slice(0,180)}</i><br>
+          <span style="color:#898781">status: ${d.status} · until ${d.finish_date? d.finish_date.slice(0,10):"?"} · source: Traffic Disruptions (k4tx-5k8p)</span>`,{maxWidth:300});
+        closureLayer.addLayer(m);
+      });
+  }catch(e){ console.warn("closure layer unavailable", e); }
 }
 
 // ---------- session trend buffer ----------
@@ -461,6 +518,7 @@ async function load(){
     const rows = await res.json();
     if(!rows.length) throw new Error("empty response");
     render(rows);
+    loadClosures(); // context layer refreshes on the same cycle; failure is non-fatal
   }catch(e){
     // keep the last-known data-as-of visible: the numbers still on screen have an age,
     // and erasing their timestamp would hide exactly what the supervisor needs to know

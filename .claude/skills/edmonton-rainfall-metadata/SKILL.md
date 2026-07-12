@@ -63,5 +63,10 @@ show the feed's own description string).
    daily-grain, ends 2019-10, and uses a different gauge network (P-series IDs, no join to
    RG-series). Verified live 2026-07-12. Intra-day history comes only from the session buffer.
 
+**Companion datasets** (full evaluation table in the library file): `yhez-gf32` pump stations
+(STORM/COMBINED only) and `k4tx-5k8p` live traffic disruptions are merged as map context layers;
+hourly ECCC weather (`ib2b-3mi4`, no precip field + corrupt dates) and water levels (`cnsu-iagr`,
+stale/upstream) were evaluated and rejected — don't re-propose them without rechecking.
+
 Deeper detail (full cautions, SoQL patterns, provenance): `knowledge/edmonton-rainfall-library.md`.
 Personas and metric definitions: `CLAUDE.md`.
