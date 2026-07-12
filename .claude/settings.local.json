@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://data.edmonton.ca/api/views/x4rm-mppc.json\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('name'\\)\\); print\\(d.get\\('description',''\\)[:2000]\\); print\\('rowsUpdatedAt:', d.get\\('rowsUpdatedAt'\\)\\); print\\([c['fieldName'] for c in d.get\\('columns',[]\\)]\\)\")",
+      "Bash(curl -s 'https://data.edmonton.ca/resource/x4rm-mppc.json?$select=storm_rating,storm_rating_description&$group=storm_rating,storm_rating_description&$order=storm_rating')",
+      "Bash(curl -s 'https://data.edmonton.ca/resource/x4rm-mppc.json?$select=max\\(date_time\\),max\\(_24h_total\\)')",
+      "Bash(python -m http.server 8642)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8642/index.html)"
+    ]
+  }
+}

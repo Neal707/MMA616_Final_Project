@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edmonton Storm Response — Drainage Ops</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --surface-1:#fcfcfb; --page:#f9f9f7;
+    --ink-1:#0b0b0b; --ink-2:#52514e; --ink-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --ring:rgba(11,11,11,.10);
+    --seq-250:#86b6ef; --seq-450:#2a78d6; --seq-650:#104281;
+    --band-0:#0ca30c; --band-3:#fab219; --band-4:#ec835a; --band-5:#d03b3b; --band-6:#8a1616;
+    --band-0-wash:rgba(12,163,12,.12); --band-3-wash:rgba(250,178,25,.16);
+    --band-4-wash:rgba(236,131,90,.16); --band-5-wash:rgba(208,59,59,.14); --band-6-wash:rgba(138,22,22,.14);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --surface-1:#1a1a19; --page:#0d0d0d;
+      --ink-1:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --ring:rgba(255,255,255,.10);
+      --seq-250:#6da7ec; --seq-450:#3987e5; --seq-650:#86b6ef;
+      --band-6:#e0559a; --band-6-wash:rgba(224,85,154,.16);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink-1);
+    font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
+  h1{font-size:17px;margin:0;font-weight:650}
+  .sub{color:var(--ink-2);font-size:12.5px;margin-top:2px}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .stamp{color:var(--ink-2);font-size:12.5px;text-align:right}
+  .stamp b{color:var(--ink-1);font-weight:600}
+  .stamp .stale{color:var(--band-5);font-weight:650}
+  button{font:inherit;font-size:12.5px;padding:5px 12px;border:1px solid var(--ring);
+    border-radius:7px;background:var(--surface-1);color:var(--ink-1);cursor:pointer}
+  button:hover{border-color:var(--baseline)}
+
+  .alertbar{display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:10px;
+    border:1px solid var(--ring);background:var(--surface-1);margin-bottom:14px}
+  .alertbar .lvl{font-size:26px;font-weight:700;min-width:36px;text-align:center}
+  .alertbar .what{flex:1}
+  .alertbar .band-name{font-weight:650}
+  .alertbar .desc{color:var(--ink-2);font-size:12.5px}
+
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px}
+  .tile{background:var(--surface-1);border:1px solid var(--ring);border-radius:10px;padding:12px 14px}
+  .tile .k{font-size:12px;color:var(--ink-2)}
+  .tile .v{font-size:26px;font-weight:700;margin-top:2px}
+  .tile .n{font-size:12px;color:var(--ink-muted);margin-top:2px}
+
+  .bands{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
+  .band{border:1px solid var(--ring);border-radius:9px;padding:9px 11px;background:var(--surface-1);
+    border-left-width:4px}
+  .band .bn{font-weight:650;font-size:12.5px;display:flex;justify-content:space-between}
+  .band .bc{font-size:20px;font-weight:700}
+  .band .bd{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+  .band .ba{font-size:11.5px;color:var(--ink-1);margin-top:4px;font-weight:600}
+
+  .main{display:grid;grid-template-columns:minmax(320px,5fr) minmax(420px,7fr);gap:12px}
+  @media(max-width:980px){.main{grid-template-columns:1fr}}
+  .panel{background:var(--surface-1);border:1px solid var(--ring);border-radius:10px;overflow:hidden}
+  .panel h2{font-size:13px;margin:0;padding:10px 14px 8px;font-weight:650}
+  .panel .note{padding:0 14px 8px;color:var(--ink-muted);font-size:11.5px}
+  #map{height:520px;background:var(--grid)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);
+    text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--grid)}
+  td{padding:7px 8px;border-bottom:1px solid var(--grid);vertical-align:middle}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:hover td{background:var(--band-0-wash)}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+    font-weight:650;font-size:12px;color:#fff}
+  .mmbar{display:inline-block;height:8px;border-radius:4px;background:var(--seq-450);
+    vertical-align:middle;margin-right:6px;min-width:2px}
+  .trend{font-weight:650;white-space:nowrap}
+  .desc-cell{color:var(--ink-2);font-size:12px;max-width:230px}
+  .age-ok{color:var(--ink-muted);font-size:12px}
+  .age-stale{color:var(--band-5);font-weight:650;font-size:12px}
+  .blind{background:var(--band-5-wash)}
+
+  .failbar{display:none;padding:12px 16px;border-radius:10px;margin-bottom:14px;
+    background:var(--band-5-wash);border:1px solid var(--band-5);color:var(--ink-1);font-weight:600}
+  footer{color:var(--ink-muted);font-size:11.5px;margin-top:14px}
+  .spark{vertical-align:middle}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Edmonton Storm Response — 24h Rainfall &amp; Storm Severity</h1>
+    <div class="sub">Drainage Operations duty view · 23-gauge network · City of Edmonton open data (x4rm-mppc)</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <div class="stamp" id="stamp">loading…</div>
+    <button id="refreshBtn">Refresh now</button>
+  </div>
+</header>
+
+<div class="failbar" id="failbar">⚠ DATA UNAVAILABLE — the feed could not be reached. You have <u>no visibility</u>; do not assume "no rain". Retry or use field reports.</div>
+
+<div class="alertbar" id="alertbar">
+  <div class="lvl" id="alertLvl">–</div>
+  <div class="what">
+    <div class="band-name" id="alertBand">Loading citywide alert level…</div>
+    <div class="desc" id="alertDesc"></div>
+  </div>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="k">Peak 24h rainfall</div><div class="v" id="kpiPeak">–</div><div class="n" id="kpiPeakN"></div></div>
+  <div class="tile"><div class="k">Stations at Dispatch or worse (rating ≥ 4)</div><div class="v" id="kpiDispatch">–</div><div class="n" id="kpiDispatchN"></div></div>
+  <div class="tile"><div class="k">Stations rising</div><div class="v" id="kpiRising">–</div><div class="n" id="kpiRisingN"></div></div>
+  <div class="tile"><div class="k">Storm shape</div><div class="v" id="kpiShape">–</div><div class="n" id="kpiShapeN"></div></div>
+</div>
+
+<div class="bands" id="bands"></div>
+
+<div class="main">
+  <div class="panel">
+    <h2>Where it is raining hardest</h2>
+    <div class="note">Marker = gauge; number = storm rating. Color diverges around rating 3 (the coping/stressed pivot):
+      <span style="color:#2a78d6;font-weight:650">■ blue = system coping</span> ·
+      <span style="color:#82817a;font-weight:650">■ gray = watch (3)</span> ·
+      <span style="color:#d03b3b;font-weight:650">■ red = system stressed</span>.
+      Click a station for its 24h rainfall line. Readings apply at the gauge location only.</div>
+    <div id="map"></div>
+  </div>
+  <div class="panel">
+    <h2>Stations ranked by severity</h2>
+    <div class="note" id="trendNote">Trend requires 2+ refreshes — leave this page open; it refreshes every 5 min.</div>
+    <div style="overflow-x:auto">
+    <table id="tbl">
+      <thead><tr>
+        <th>Station</th><th class="num">24h total</th><th>Rating</th><th>Trend (session)</th>
+        <th>Feed says</th><th class="num">Updated</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Bands: 0–2 Normal · 3 Monitor · 4 Dispatch · 5 Barricade · ≥6 Escalate. Gauges transmit only after 2&nbsp;mm accumulates —
+  a silent gauge in an active storm is a blind spot, not calm. Rainfall measured May–October; feed updates ~every 15 min.
+  Trend is a <em>session</em> estimate accumulated in this browser, not official history.
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+const API = "https://data.edmonton.ca/resource/x4rm-mppc.json?$$exclude_system_fields=false&$limit=100";
+const REFRESH_MS = 5*60*1000, STALE_MIN = 60, BUF_KEY = "edm_rain_buffer_v1";
+const BANDS = [
+  {min:0,  max:2,  name:"Normal",    color:"var(--band-0)", wash:"var(--band-0-wash)", icon:"●", action:"Routine monitoring"},
+  {min:3,  max:3,  name:"Monitor",   color:"var(--band-3)", wash:"var(--band-3-wash)", icon:"◆", action:"Watch closely; pre-position if rising"},
+  {min:4,  max:4,  name:"Dispatch",  color:"var(--band-4)", wash:"var(--band-4-wash)", icon:"▲", action:"Send crews: catch basins, pump checks"},
+  {min:5,  max:5,  name:"Barricade", color:"var(--band-5)", wash:"var(--band-5-wash)", icon:"■", action:"Close underpasses & low areas"},
+  {min:6,  max:99, name:"Escalate",  color:"var(--band-6)", wash:"var(--band-6-wash)", icon:"✖", action:"Notify Emergency Management; advisories"}
+];
+const MARKER_HEX = {Normal:"#0ca30c",Monitor:"#fab219",Dispatch:"#ec835a",Barricade:"#d03b3b",Escalate:"#8a1616"};
+// Diverging map scale: blue arm (coping) <- gray pivot at rating 3 -> red arm (stressed)
+const DIV_HEX = {0:"#2a78d6",1:"#6da7ec",2:"#b7d3f6",3:"#9a9992",4:"#ec835a",5:"#d03b3b"};
+const divColor = r => r>=6? "#8a1616" : (DIV_HEX[r] ?? "#9a9992");
+const inkOn = hex => { // dark text on light fills, white on deep ones
+  const n=parseInt(hex.slice(1),16), L=.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255);
+  return L>150? "#0b0b0b" : "#fff";
+};
+const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
+const fmtMm = v => v.toFixed(1)+" mm";
+
+let map=null, markerLayer=null, timer=null;
+
+function initMap(){
+  if (typeof L === "undefined"){ document.getElementById("map").innerHTML =
+    "<div style='padding:20px;color:var(--ink-2)'>Map library unavailable (offline?) — station table remains authoritative.</div>"; return; }
+  map = L.map("map",{scrollWheelZoom:false}).setView([53.545,-113.50],10);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {attribution:"&copy; OpenStreetMap", maxZoom:16}).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+// ---------- session trend buffer ----------
+function loadBuf(){ try{ return JSON.parse(localStorage.getItem(BUF_KEY))||[] }catch(e){ return [] } }
+function pushBuf(stations){
+  const now = Date.now();
+  let buf = loadBuf().filter(s => now - s.t < 24*3600*1000);
+  if (!buf.length || now - buf[buf.length-1].t > 2*60*1000){
+    const snap = {t:now, st:{}};
+    stations.forEach(s => snap.st[s.station] = [s.mm, s.rating]);
+    buf.push(snap);
+    try{ localStorage.setItem(BUF_KEY, JSON.stringify(buf)) }catch(e){}
+  }
+  return buf;
+}
+// compare latest reading vs snapshot ~45 min back (or oldest available)
+function trendFor(buf, station, curMm){
+  if (buf.length < 2) return null;
+  const now = Date.now();
+  let base = buf[0];
+  for (const s of buf){ if (now - s.t >= 45*60*1000) base = s; else break; }
+  if (base === buf[buf.length-1]) base = buf[0];
+  const prev = base.st[station];
+  if (!prev) return null;
+  const d = curMm - prev[0];
+  const mins = Math.round((now - base.t)/60000);
+  if (d > 0.4)  return {dir:"▲ rising",  d, mins, color:"var(--band-5)"};
+  if (d < -0.4) return {dir:"▼ falling", d, mins, color:"var(--band-0)"};
+  return {dir:"— steady", d, mins, color:"var(--ink-muted)"};
+}
+// popup line chart: station's buffered 24h-total over session time
+// Leaflet popups are white in both modes -> fixed dark-on-white inks, not CSS vars
+function stationChart(buf, station){
+  const pts = buf.map(s => s.st[station]? {t:s.t, mm:s.st[station][0]} : null).filter(Boolean);
+  if (pts.length < 2) return `<div style="color:#52514e;font-size:11.5px;max-width:250px;margin-top:6px">
+    Rainfall line builds while the dashboard stays open (${pts.length} reading so far; the feed
+    keeps no history, so this chart is session-local).</div>`;
+  const W=280,H=120,padL=34,padR=10,padT=10,padB=22;
+  const t0=pts[0].t, t1=pts[pts.length-1].t, tr=(t1-t0)||1;
+  const yMax=Math.max(1, Math.max(...pts.map(p=>p.mm))*1.05);
+  const X=t=>padL+(t-t0)/tr*(W-padL-padR), Y=v=>padT+(1-v/yMax)*(H-padT-padB);
+  const d=pts.map((p,i)=>(i?"L":"M")+X(p.t).toFixed(1)+","+Y(p.mm).toFixed(1)).join("");
+  const fmt=t=>new Date(t).toLocaleTimeString("en-CA",{timeZone:"America/Edmonton",hour:"2-digit",minute:"2-digit"});
+  const last=pts[pts.length-1], mins=Math.round((t1-t0)/60000);
+  const gridY=[0,.5,1].map(f=>{const v=yMax*f;return `<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="#e1e0d9" stroke-width="1"/>
+    <text x="${padL-4}" y="${Y(v)+3.5}" text-anchor="end" font-size="9" fill="#898781">${v.toFixed(0)}</text>`}).join("");
+  return `<div style="margin-top:6px">
+    <svg width="${W}" height="${H}" style="display:block">
+      ${gridY}
+      <path d="${d}" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="${X(last.t)}" cy="${Y(last.mm)}" r="3.5" fill="#2a78d6" stroke="#fff" stroke-width="1.5"/>
+      <text x="${X(last.t)-4}" y="${Y(last.mm)-6}" text-anchor="end" font-size="10" font-weight="600" fill="#0b0b0b">${last.mm.toFixed(1)} mm</text>
+      <text x="${padL}" y="${H-6}" font-size="9" fill="#898781">${fmt(t0)}</text>
+      <text x="${W-padR}" y="${H-6}" text-anchor="end" font-size="9" fill="#898781">${fmt(t1)} MT</text>
+    </svg>
+    <div style="color:#898781;font-size:10.5px">24h total, mm — session data: ${pts.length} readings over ${mins} min (not official history)</div>
+  </div>`;
+}
+function sparkline(buf, station){
+  const pts = buf.map(s => s.st[station]).filter(Boolean).map(p=>p[0]);
+  if (pts.length < 2) return "";
+  const w=64,h=16, mn=Math.min(...pts), mx=Math.max(...pts), rng=(mx-mn)||1;
+  const step = w/(pts.length-1);
+  const d = pts.map((v,i)=>(i?"L":"M")+(i*step).toFixed(1)+","+(h-2-(v-mn)/rng*(h-4)).toFixed(1)).join("");
+  return `<svg class="spark" width="${w}" height="${h}" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--seq-450)" stroke-width="2" stroke-linecap="round"/></svg>`;
+}
+
+// ---------- render ----------
+function render(rows){
+  const now = Date.now();
+  const stations = rows.map(r => ({
+    station: r.station,
+    mm: parseFloat(r._24h_total)||0,
+    rating: parseInt(r.storm_rating,10)||0,
+    desc: r.storm_rating_description||"",
+    lat: r.location? parseFloat(r.location.latitude):null,
+    lon: r.location? parseFloat(r.location.longitude):null,
+    upd: r[":updated_at"]? new Date(r[":updated_at"]) : null
+  })).sort((a,b)=> b.rating-a.rating || b.mm-a.mm);
+
+  const buf = pushBuf(stations);
+
+  // stamp + freshness
+  const newest = stations.reduce((m,s)=> s.upd && (!m||s.upd>m)? s.upd:m, null);
+  const ageMin = newest? Math.round((now-newest)/60000) : null;
+  const staleAll = ageMin!==null && ageMin>STALE_MIN;
+  document.getElementById("stamp").innerHTML =
+    "Data as of <b>" + (newest? newest.toLocaleString("en-CA",{timeZone:"America/Edmonton",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "unknown") +
+    " MT</b>" + (ageMin!==null? (staleAll? ` <span class="stale">(${ageMin} min old — STALE)</span>` : ` (${ageMin} min ago)`) : "") +
+    "<br>next auto-refresh in <span id='cd'>5:00</span>";
+
+  // citywide alert
+  const maxR = Math.max(...stations.map(s=>s.rating));
+  const top = stations[0], band = bandOf(maxR);
+  const ab = document.getElementById("alertbar");
+  ab.style.background = band.wash; ab.style.borderColor = band.color;
+  document.getElementById("alertLvl").textContent = maxR;
+  document.getElementById("alertLvl").style.color = band.color;
+  document.getElementById("alertBand").textContent =
+    `${band.icon} Citywide alert: ${band.name.toUpperCase()} — ${band.action}`;
+  document.getElementById("alertDesc").textContent =
+    `Worst station ${top.station}: "${top.desc}"`;
+
+  // KPIs
+  const peak = stations.reduce((m,s)=> s.mm>m.mm? s:m, stations[0]);
+  document.getElementById("kpiPeak").textContent = fmtMm(peak.mm);
+  document.getElementById("kpiPeakN").textContent = "at "+peak.station;
+  const nDisp = stations.filter(s=>s.rating>=4).length;
+  document.getElementById("kpiDispatch").textContent = nDisp;
+  document.getElementById("kpiDispatchN").textContent = nDisp? stations.filter(s=>s.rating>=4).map(s=>s.station).join(", ") : "none";
+  const trends = stations.map(s=>({s, t:trendFor(buf,s.station,s.mm)}));
+  const rising = trends.filter(x=>x.t && x.t.dir.includes("rising"));
+  document.getElementById("kpiRising").textContent = buf.length<2? "–" : rising.length;
+  document.getElementById("kpiRisingN").textContent = buf.length<2? "need 2+ snapshots" :
+      (rising.length? rising.map(x=>x.s.station).join(", ") : "none rising");
+  // storm shape: hot = rating>=3
+  const hot = stations.filter(s=>s.rating>=3 && s.lat!=null);
+  let shape="Quiet", shapeN="no station at Monitor or above";
+  if (hot.length){
+    const latSpread = Math.max(...hot.map(s=>s.lat))-Math.min(...hot.map(s=>s.lat));
+    const lonSpread = Math.max(...hot.map(s=>s.lon))-Math.min(...hot.map(s=>s.lon));
+    const km = Math.max(latSpread*111, lonSpread*66);
+    shape = (hot.length<=3 || km<8)? "Localized" : (hot.length>=8? "Citywide" : "Multi-area");
+    shapeN = `${hot.length} station(s) ≥ Monitor, spread ≈ ${km.toFixed(0)} km`;
+  }
+  document.getElementById("kpiShape").textContent = shape;
+  document.getElementById("kpiShapeN").textContent = shapeN;
+
+  // band strip
+  document.getElementById("bands").innerHTML = BANDS.map(b=>{
+    const inBand = stations.filter(s=>s.rating>=b.min && s.rating<=b.max);
+    return `<div class="band" style="border-left-color:${b.color};${inBand.length&&b.min>=3? 'background:'+b.wash:''}">
+      <div class="bn"><span>${b.icon} ${b.name}</span><span style="color:var(--ink-muted);font-weight:500">r ${b.min===0?'0–2':(b.max>8?'6+':b.min)}</span></div>
+      <div class="bc">${inBand.length}</div>
+      <div class="bd">${inBand.length? inBand.map(s=>s.station).join(", "):"—"}</div>
+      <div class="ba">${b.action}</div></div>`;
+  }).join("");
+
+  // table
+  const maxMm = Math.max(1, ...stations.map(s=>s.mm));
+  document.querySelector("#tbl tbody").innerHTML = trends.map(({s,t})=>{
+    const b = bandOf(s.rating);
+    const age = s.upd? Math.round((now-s.upd)/60000) : null;
+    const stale = age===null || age>STALE_MIN;
+    return `<tr class="${stale?'blind':''}">
+      <td><b>${s.station}</b></td>
+      <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*70).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
+      <td><span class="chip" style="background:${MARKER_HEX[b.name]}">${b.icon} ${s.rating} ${b.name}</span></td>
+      <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">buffering…</span>`}</td>
+      <td class="desc-cell">${s.desc}</td>
+      <td class="num ${stale?'age-stale':'age-ok'}">${age===null? "⚠ no stamp" : (stale? "⚠ "+age+" min — blind spot" : age+" min")}</td>
+    </tr>`;
+  }).join("");
+  const snaps = buf.length, span = snaps>1? Math.round((buf[buf.length-1].t-buf[0].t)/60000):0;
+  document.getElementById("trendNote").textContent = snaps<2?
+    "Trend requires 2+ refreshes — leave this page open; it refreshes every 5 min." :
+    `Session trend: ${snaps} snapshots over ${span} min (this browser only — not official history).`;
+
+  // map
+  if (map && markerLayer){
+    markerLayer.clearLayers();
+    stations.filter(s=>s.lat!=null).forEach(s=>{
+      const b = bandOf(s.rating), fill = divColor(s.rating);
+      const m = L.marker([s.lat,s.lon],{icon: L.divIcon({className:"",
+        html:`<div style="width:30px;height:30px;border-radius:50%;background:${fill};
+          border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);color:${inkOn(fill)};font:700 13px/26px system-ui;
+          text-align:center">${s.rating}</div>`, iconSize:[30,30], iconAnchor:[15,15]})});
+      // content as a function so the chart reads the buffer at click time, not render time
+      m.bindPopup(()=>`<b>${s.station}</b> — ${b.icon} ${b.name}<br>${s.mm.toFixed(1)} mm / 24h · rating ${s.rating}<br><i>${s.desc}</i><br>${b.action}${stationChart(loadBuf(), s.station)}`,
+        {maxWidth:320});
+      markerLayer.addLayer(m);
+    });
+  }
+  document.getElementById("failbar").style.display="none";
+}
+
+// ---------- fetch loop ----------
+let cdEnd = Date.now()+REFRESH_MS;
+async function load(){
+  try{
+    const res = await fetch(API);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = await res.json();
+    if(!rows.length) throw new Error("empty response");
+    render(rows);
+  }catch(e){
+    document.getElementById("failbar").style.display="block";
+    document.getElementById("stamp").innerHTML = "<span class='stale'>feed unreachable</span>";
+    console.error(e);
+  }
+  const month = new Date().getMonth()+1; // off-season note Nov–Apr
+  if (month>=11 || month<=4){
+    const fb=document.getElementById("failbar");
+    fb.style.display="block";
+    fb.innerHTML="ℹ Off-season (Nov–Apr): rainfall is not measured. Zeros/quiet readings mean the feed is inactive, not dry conditions.";
+  }
+  cdEnd = Date.now()+REFRESH_MS;
+}
+setInterval(()=>{ // countdown + auto-refresh
+  const s = Math.max(0, Math.round((cdEnd-Date.now())/1000));
+  const el = document.getElementById("cd");
+  if (el) el.textContent = Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  if (s<=0) load();
+},1000);
+document.getElementById("refreshBtn").addEventListener("click", load);
+
+initMap();
+load();
+</script>
+</body>
+</html>
