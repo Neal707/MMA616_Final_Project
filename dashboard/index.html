@@ -64,6 +64,10 @@
   .panel{background:var(--surface-1);border:1px solid var(--ring);border-radius:10px;overflow:hidden}
   .panel h2{font-size:13px;margin:0;padding:10px 14px 8px;font-weight:650}
   .panel .note{padding:0 14px 8px;color:var(--ink-muted);font-size:11.5px}
+  .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:4px 14px 10px;font-size:12px;color:var(--ink-2)}
+  .filters select{font:inherit;padding:3px 6px;border:1px solid var(--ring);border-radius:6px;
+    background:var(--surface-1);color:var(--ink-1);max-width:200px}
+  .filters .fnote{color:var(--ink-muted);font-size:11px}
   #map{height:520px;background:var(--grid)}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -126,22 +130,34 @@
 <div class="main">
   <div class="panel">
     <h2>Where it is raining hardest</h2>
-    <div class="note">Marker = gauge; number = storm rating. Color diverges at the coping/stressed boundary:
-      <span style="color:#2a78d6;font-weight:650">■ blue = system coping (0–2)</span> ·
-      <span style="color:#d03b3b;font-weight:650">■ red = system stressed (3+)</span>, deeper = further from the boundary.
-      Click a station for its 24h rainfall line. Readings apply at the gauge location only.
-      Context layers (toggle top-right): <b>P</b> = storm/combined pump station ·
+    <div class="note">Each ward is filled by its <b>worst gauge</b>, light yellow → dark red:
+      <span style="background:#fee79a;padding:0 6px;border-radius:3px;color:#0b0b0b">0</span>
+      <span style="background:#fdb63f;padding:0 6px;border-radius:3px;color:#0b0b0b">2</span>
+      <span style="background:#f78f33;padding:0 6px;border-radius:3px;color:#0b0b0b">3</span>
+      <span style="background:#d03b3b;padding:0 6px;border-radius:3px;color:#fff">5</span>
+      <span style="background:#8a1616;padding:0 6px;border-radius:3px;color:#fff">6+</span> ·
+      <span style="background:#c8c7c0;padding:0 6px;border-radius:3px;color:#0b0b0b">gray = no gauge (no visibility)</span>.
+      Dots are the gauges themselves — readings apply at the gauge point; the ward fill is posture, not certainty.
+      Click a ward for its stations, a dot for that station's 24h rainfall line.
+      Context layers (toggle top-right): <b>P</b> = pump station ·
       <span style="color:#eda100;font-weight:700">!</span> = road disruption
       (<span style="color:#d03b3b;font-weight:700">red = emergency</span>).</div>
     <div id="map"></div>
   </div>
   <div class="panel">
     <h2>Stations ranked by severity</h2>
-    <div class="note" id="trendNote">Trend requires 2+ refreshes — leave this page open; it refreshes every 5 min.</div>
+    <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
+    <div class="filters">
+      <label>Station <select id="fStation"><option value="">All</option></select></label>
+      <label>Rating <select id="fRating"><option value="">All</option></select></label>
+      <label>Feed says <select id="fSays"><option value="">All</option></select></label>
+      <button id="fClear" type="button">Clear</button>
+      <span class="fnote">filters the list &amp; gauge dots; citywide KPIs and ward fill are unaffected</span>
+    </div>
     <div style="overflow-x:auto">
     <table id="tbl">
       <thead><tr>
-        <th>Station</th><th class="num">24h total</th><th>Rating</th><th>Trend (session)</th>
+        <th>Station</th><th>District</th><th class="num">24h total</th><th>Rating</th><th>Trend (session)</th>
         <th>Feed says</th><th class="num">Updated</th>
       </tr></thead>
       <tbody></tbody>
@@ -160,7 +176,7 @@
 <script>
 "use strict";
 const API = "https://data.edmonton.ca/resource/x4rm-mppc.json?$$exclude_system_fields=false&$limit=100";
-const REFRESH_MS = 5*60*1000, STALE_MIN = 60, BUF_KEY = "edm_rain_buffer_v1";
+const REFRESH_MS = 5*60*1000, STALE_MIN = 60, BUF_KEY = "edm_rain_buffer_v2";
 const BANDS = [
   {min:0,  max:2,  name:"Normal",    color:"var(--band-0)", wash:"var(--band-0-wash)", icon:"●", action:"Routine monitoring"},
   {min:3,  max:3,  name:"Monitor",   color:"var(--band-3)", wash:"var(--band-3-wash)", icon:"◆", action:"Watch closely; pre-position if rising"},
@@ -169,10 +185,10 @@ const BANDS = [
   {min:6,  max:99, name:"Escalate",  color:"var(--band-6)", wash:"var(--band-6-wash)", icon:"✖", action:"Notify Emergency Management; advisories"}
 ];
 const MARKER_HEX = {Normal:"#0ca30c",Monitor:"#fab219",Dispatch:"#ec835a",Barricade:"#d03b3b",Escalate:"#8a1616"};
-// Diverging map scale, blue/red only (user preference — no neutral midpoint):
-// blue arm = system coping (0–2, deeper = quieter), red arm = system stressed (3+, deeper = worse)
-const DIV_HEX = {0:"#2a78d6",1:"#6da7ec",2:"#b7d3f6",3:"#f3a683",4:"#ec6b4a",5:"#d03b3b"};
-const divColor = r => r>=6? "#8a1616" : (DIV_HEX[r] ?? "#9a9992");
+// Choropleth ramp, light yellow -> dark red (user preference): ward fill = worst gauge inside
+const RAMP = {0:"#fee79a",1:"#fdd561",2:"#fdb63f",3:"#f78f33",4:"#e95f2b",5:"#d03b3b"};
+const rampColor = r => r>=6? "#8a1616" : (RAMP[r] ?? "#e1e0d9");
+const NO_GAUGE_FILL = "#c8c7c0"; // ward with no gauge = no visibility, not calm
 const inkOn = hex => { // dark text on light fills, white on deep ones
   const n=parseInt(hex.slice(1),16), L=.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255);
   return L>150? "#0b0b0b" : "#fff";
@@ -180,7 +196,7 @@ const inkOn = hex => { // dark text on light fills, white on deep ones
 const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
 const fmtMm = v => v.toFixed(1)+" mm";
 
-let map=null, markerLayer=null, pumpLayer=null, closureLayer=null, timer=null;
+let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, timer=null;
 
 function initMap(){
   if (typeof L === "undefined"){ document.getElementById("map").innerHTML =
@@ -189,14 +205,54 @@ function initMap(){
   // CARTO Positron: near-monochrome basemap so the diverging markers carry the color
   L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
     {attribution:"&copy; OpenStreetMap &copy; CARTO", subdomains:"abcd", maxZoom:16}).addTo(map);
+  wardLayer = L.layerGroup().addTo(map);
   markerLayer = L.layerGroup().addTo(map);
   // context layers default OFF — the gauges are the primary read; pumps/closures are
   // one click away when the supervisor is actually routing crews or barricades
   pumpLayer = L.layerGroup();
   closureLayer = L.layerGroup();
-  L.control.layers(null, {"Rain gauges":markerLayer, "Storm pump stations":pumpLayer,
-    "Road closures (live)":closureLayer}, {collapsed:false, position:"topright"}).addTo(map);
+  L.control.layers(null, {"Ward severity fill":wardLayer, "Rain gauges":markerLayer,
+    "Storm pump stations":pumpLayer, "Road closures (live)":closureLayer},
+    {collapsed:false, position:"topright"}).addTo(map);
   loadPumps();
+  loadWards();
+}
+
+// Ward polygons (da6r-6gkw) — the same layer Socrata joins the feed's
+// :@computed_region_da6r_6gkw ids against, so station->ward assignment is authoritative.
+// Geometry server-simplified: ~27 KB for all 12 wards.
+let wardGeoJSON = null; // L.geoJSON once loaded; restyled on every render
+function loadWards(){
+  if (!wardLayer) return;
+  fetch("https://data.edmonton.ca/resource/da6r-6gkw.json?$select=_feature_id,name,simplify_preserve_topology(the_geom,0.0005) as geom&$limit=15")
+    .then(r=>r.json()).then(rows=>{
+      const feats = rows.map(w=>({type:"Feature", properties:{id:w._feature_id, name:w.name}, geometry:w.geom}));
+      wardGeoJSON = L.geoJSON({type:"FeatureCollection", features:feats}, {
+        style: f => wardStyle(f.properties.id),
+        onEachFeature: (f, lyr) => lyr.bindPopup(()=>wardPopup(f.properties), {maxWidth:320})
+      });
+      wardLayer.addLayer(wardGeoJSON);
+      if (lastStations.length) restyleWards();
+    }).catch(e=>console.warn("ward layer unavailable", e));
+}
+let lastStations = []; // latest render's stations, for ward styling/popups
+const wardLabel = id => id? "Ward "+parseInt(id,10) : null;
+function wardStations(id){ return lastStations.filter(s=>s.ward===id); }
+function wardStyle(id){
+  const inWard = wardStations(id).filter(s=>s.hasReading);
+  const worst = inWard.length? Math.max(...inWard.map(s=>s.rating)) : null;
+  return {color:"#898781", weight:1, fillColor: worst===null? NO_GAUGE_FILL : rampColor(worst),
+          fillOpacity:.55};
+}
+function restyleWards(){ if (wardGeoJSON) wardGeoJSON.setStyle(f => wardStyle(f.properties.id)); }
+function wardPopup(props){
+  const sts = wardStations(props.id);
+  if (!sts.length) return `<b>${wardLabel(props.id)}</b><br>⚠ No rain gauge in this ward — <b>no visibility here</b>, not calm. Judge from adjacent gauges and field reports.`;
+  const lines = sts.map(s=> s.hasReading?
+      `${s.station}: <b>${s.mm.toFixed(1)} mm</b> · rating ${s.rating} ${bandOf(s.rating).name}` :
+      `${s.station}: ⚠ no usable reading`).join("<br>");
+  return `<b>${wardLabel(props.id)}</b> — ${sts.length} gauge(s)<br>${lines}<br>
+    <span style="color:#898781;font-size:11px">Fill = worst gauge; readings apply at gauge points only.</span>`;
 }
 
 // ---------- context layers (companion open datasets) ----------
@@ -255,11 +311,16 @@ function loadBuf(){
   try{ memBuf = JSON.parse(localStorage.getItem(BUF_KEY))||[] }catch(e){ memBuf = [] }
   return memBuf;
 }
-function pushBuf(stations){
+// One buffer point per FEED PUBLISH, not per page refresh: the publisher stamps every
+// row with one batch :updated_at, so a new stamp = new data. Refreshing faster than the
+// feed publishes must not add duplicate points — that made every trend read "+0.0 mm/5m"
+// against a snapshot that was the same publish seen twice.
+function pushBuf(stations, stampMs){
   const now = Date.now();
   let buf = loadBuf().filter(s => now - s.t < 24*3600*1000);
-  if (!buf.length || now - buf[buf.length-1].t > 2*60*1000){
-    const snap = {t:now, st:{}};
+  const t = Number.isFinite(stampMs)? stampMs : now; // publish time, not view time
+  if (!buf.length || t > buf[buf.length-1].t){
+    const snap = {t, st:{}};
     stations.forEach(s => { if (s.hasReading) snap.st[s.station] = [s.mm, s.rating] });
     buf.push(snap);
   }
@@ -346,8 +407,34 @@ function sparkline(buf, station){
   return `<svg class="spark" width="${w}" height="${h}" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--seq-450)" stroke-width="2" stroke-linecap="round"/></svg>`;
 }
 
+// ---------- filters ----------
+function filterValues(){
+  return { station: document.getElementById("fStation").value,
+           rating:  document.getElementById("fRating").value,
+           says:    document.getElementById("fSays").value };
+}
+function syncFilterOptions(stations){
+  const fill = (id, vals, fmt) => {
+    const el = document.getElementById(id), cur = el.value;
+    el.innerHTML = '<option value="">All</option>' +
+      vals.map(v=>`<option value="${String(v).replace(/"/g,"&quot;")}">${fmt? fmt(v):v}</option>`).join("");
+    if ([...el.options].some(o=>o.value===cur)) el.value = cur; // keep selection across refreshes
+  };
+  fill("fStation", stations.map(s=>s.station));
+  fill("fRating", [...new Set(stations.filter(s=>s.hasReading).map(s=>s.rating))].sort((a,b)=>a-b).map(String),
+       v => `${v} — ${bandOf(+v).name}`);
+  fill("fSays", [...new Set(stations.filter(s=>s.desc).map(s=>s.desc))],
+       v => v.length>60? v.slice(0,57)+"…" : v);
+}
+let lastRows = null;
+function rerender(){ if (lastRows) render(lastRows); }
+["fStation","fRating","fSays"].forEach(id => document.getElementById(id).addEventListener("change", rerender));
+document.getElementById("fClear").addEventListener("click",
+  ()=>{ ["fStation","fRating","fSays"].forEach(id=>document.getElementById(id).value=""); rerender(); });
+
 // ---------- render ----------
 function render(rows){
+  lastRows = rows;
   const now = Date.now();
   // NaN = "no reading", never 0 — a ||0 fallback would dress absence up as calm
   const num = v => { const n = parseFloat(v); return Number.isFinite(n)? n : NaN; };
@@ -359,12 +446,15 @@ function render(rows){
       desc: r.storm_rating_description||"",
       lat: r.location? parseFloat(r.location.latitude):null,
       lon: r.location? parseFloat(r.location.longitude):null,
-      upd: r[":updated_at"]? new Date(r[":updated_at"]) : null
+      upd: r[":updated_at"]? new Date(r[":updated_at"]) : null,
+      ward: r[":@computed_region_da6r_6gkw"] || null
     };
   }).sort((a,b)=> (b.hasReading?b.rating:999)-(a.hasReading?a.rating:999) || (b.mm||0)-(a.mm||0));
 
-  const buf = pushBuf(stations);
+  const newestStamp = stations.reduce((m,s)=> s.upd && (!m||s.upd>m)? s.upd:m, null);
+  const buf = pushBuf(stations, newestStamp? newestStamp.getTime() : NaN);
   rememberStations(stations);
+  lastStations = stations;
   // roster diff: the publisher replaces the whole table each publish, so a dead gauge
   // disappears as a MISSING ROW — diff against every station seen in the buffer window
   const present = new Set(stations.map(s=>s.station));
@@ -375,7 +465,7 @@ function render(rows){
 
   // stamp + freshness — the publish stamp is batch-level (all rows share it), so
   // feed-wide quiet is one header condition, not 23 per-row alarms
-  const newest = stations.reduce((m,s)=> s.upd && (!m||s.upd>m)? s.upd:m, null);
+  const newest = newestStamp;
   if (newest){ lastGoodStamp = newest; failSince = null; }
   const ageMin = newest? Math.round((now-newest)/60000) : null;
   const quiet = ageMin!==null && ageMin>STALE_MIN;
@@ -441,20 +531,31 @@ function render(rows){
       <div class="ba">${b.action}</div></div>`;
   }).join("");
 
+  // filters — repopulate options (preserving selection), then read active values
+  syncFilterOptions(stations);
+  const fv = filterValues();
+  const passes = s => (!fv.station || s.station===fv.station) &&
+                      (!fv.rating || (s.hasReading && String(s.rating)===fv.rating)) &&
+                      (!fv.says   || s.desc===fv.says);
+  const anyFilter = !!(fv.station || fv.rating || fv.says);
+
   // table — blind spots (vanished or unreadable stations) pinned on top, styled as such;
   // per-row age is shown plain: the stamp is batch-level, so it is context, not an alarm
   const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
-  const missingRows = missing.map(id => `<tr class="blind">
-      <td><b>${id}</b></td>
+  const missingRows = missing
+    .filter(id => !anyFilter || fv.station===id)
+    .map(id => `<tr class="blind">
+      <td><b>${id}</b></td><td>—</td>
       <td class="num">—</td>
       <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
       <td><span style="color:var(--ink-muted)">—</span></td>
       <td class="desc-cell"><b>No visibility</b> — station dropped from the feed this session. Blind spot, not calm.</td>
       <td class="num age-stale">⚠ gone</td>
     </tr>`).join("");
-  document.querySelector("#tbl tbody").innerHTML = missingRows + trends.map(({s,t})=>{
+  const bodyRows = trends.filter(({s}) => passes(s) || (!anyFilter && !s.hasReading)).map(({s,t})=>{
+    const district = wardLabel(s.ward) || "outside ward layer";
     if (!s.hasReading) return `<tr class="blind">
-      <td><b>${s.station}</b></td>
+      <td><b>${s.station}</b></td><td>${district}</td>
       <td class="num">—</td>
       <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
       <td><span style="color:var(--ink-muted)">—</span></td>
@@ -464,18 +565,20 @@ function render(rows){
     const b = bandOf(s.rating), chipBg = MARKER_HEX[b.name];
     const age = s.upd? Math.round((now-s.upd)/60000) : null;
     return `<tr>
-      <td><b>${s.station}</b></td>
+      <td><b>${s.station}</b></td><td>${district}</td>
       <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*70).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
       <td><span class="chip" style="background:${chipBg};color:${inkOn(chipBg)}">${b.icon} ${s.rating} ${b.name}</span></td>
-      <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m${t.note? ' · '+t.note : ''}</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">buffering…</span>`}</td>
+      <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m${t.note? ' · '+t.note : ''}</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">awaiting next feed publish…</span>`}</td>
       <td class="desc-cell">${s.desc}</td>
       <td class="num age-ok">${age===null? "no stamp" : age+" min"}</td>
     </tr>`;
   }).join("");
+  document.querySelector("#tbl tbody").innerHTML = missingRows + (bodyRows ||
+    `<tr><td colspan="7" style="color:var(--ink-muted);padding:14px">No station matches the current filters.</td></tr>`);
   const snaps = buf.length, span = snaps>1? Math.round((buf[buf.length-1].t-buf[0].t)/60000):0;
   document.getElementById("trendNote").textContent = (snaps<2?
-    "Trend requires 2+ refreshes — leave this page open; it refreshes every 5 min." :
-    `Session trend: ${snaps} snapshots over ${span} min (this browser only — not official history).`) +
+    "Trend appears once the feed publishes a second batch (~15 min cadence) — leave this page open." :
+    `Session trend: ${snaps} feed publishes over ${span} min (this browser only — not official history).`) +
     (persistOK? "" : " ⚠ Browser storage unavailable — trend lives in this tab only and will not survive a reload.");
 
   // map
@@ -489,21 +592,23 @@ function render(rows){
       g.bindPopup(`<b>${id}</b> — ⚠ no visibility<br>${why}<br>Blind spot, not calm.`);
       markerLayer.addLayer(g);
     };
-    stations.filter(s=>s.lat!=null).forEach(s=>{
+    stations.filter(s=>s.lat!=null && (passes(s) || !s.hasReading)).forEach(s=>{
       if (!s.hasReading){ ghost(s.station, s.lat, s.lon, "Reading missing or malformed in the feed."); return; }
-      const b = bandOf(s.rating), fill = divColor(s.rating);
-      const m = L.marker([s.lat,s.lon],{icon: L.divIcon({className:"",
-        html:`<div style="width:30px;height:30px;border-radius:50%;background:${fill};
-          border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);color:${inkOn(fill)};font:700 13px/26px system-ui;
-          text-align:center">${s.rating}</div>`, iconSize:[30,30], iconAnchor:[15,15]})});
+      const b = bandOf(s.rating);
+      // small uniform dot: the ward fill carries severity; the dot marks where the
+      // reading actually applies (gauge-location caveat)
+      const m = L.circleMarker([s.lat,s.lon],
+        {radius:6, color:"#fff", weight:1.5, fillColor:"#1a1a19", fillOpacity:.9});
+      m.bindTooltip(s.station, {direction:"top", offset:[0,-6]});
       // content as a function so the chart reads the buffer at click time, not render time
-      m.bindPopup(()=>`<b>${s.station}</b> — ${b.icon} ${b.name}<br>${s.mm.toFixed(1)} mm / 24h · rating ${s.rating}<br><i>${s.desc}</i><br>${b.action}${stationChart(loadBuf(), s.station)}`,
+      m.bindPopup(()=>`<b>${s.station}</b> — ${wardLabel(s.ward)||"outside ward layer"}<br>${b.icon} ${b.name} · ${s.mm.toFixed(1)} mm / 24h · rating ${s.rating}<br><i>${s.desc}</i><br>${b.action}${stationChart(loadBuf(), s.station)}`,
         {maxWidth:320});
       markerLayer.addLayer(m);
     });
     // vanished stations: place from remembered coords so the hole in coverage is visible
     const meta = loadMeta();
     missing.forEach(id => { if (meta[id]) ghost(id, meta[id].lat, meta[id].lon, "Station dropped from the feed this session."); });
+    restyleWards();
   }
   document.getElementById("failbar").style.display="none";
 }

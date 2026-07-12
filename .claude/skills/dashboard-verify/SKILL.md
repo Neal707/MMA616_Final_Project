@@ -26,10 +26,13 @@ against the source independently.
    ```
 3. **Freshness stamp** — page's "Data as of" equals newest `:updated_at`
    (`$$exclude_system_fields=false`) converted to America/Edmonton.
-4. **Trend buffer** — inject a synthetic snapshot into localStorage
-   (`edm_rain_buffer_v1`, shape `[{t:<ms>, st:{RG17:[mm,rating],…}}]`) dated ~50 min back with
-   offset totals, call `load()`, confirm rising/falling arrows, sparklines, and the buffer-depth
-   note appear. **Remove the synthetic snapshot afterwards** — it poisons real trends.
+4. **Trend buffer** — key `edm_rain_buffer_v2`, shape `[{t:<ms>, st:{RG17:[mm,rating],…}}]`.
+   `t` is the FEED PUBLISH time (batch `:updated_at`), and `pushBuf` only appends when the
+   stamp advances — page refreshes between publishes must NOT add points (that regression
+   showed every station as "steady +0.0 mm/5m"). Inject a synthetic point dated ~40 min
+   before the current one with offset totals, `memBuf=null; load()`, confirm rising/falling
+   arrows, sparklines, and a "N feed publishes over X min" note. **Remove the synthetic
+   snapshot afterwards** — it poisons real trends.
 5. **Failure path** — stub `window.fetch` to reject, call `load()`, confirm the failbar shows
    "DATA UNAVAILABLE … do not assume no rain" and the stamp reads "feed unreachable". Restore
    fetch and reload.
@@ -37,10 +40,17 @@ against the source independently.
    `openPopup()` on a marker must show an SVG line with one path point per buffered reading and
    the "session data … not official history" caption; with a single-snapshot buffer it must show
    the "builds while the dashboard stays open" message instead of an empty plot.
-7. **Diverging marker scale (blue/red only — no gray pivot, per user preference)** — marker fill
-   by rating: 0 `#2a78d6`, 1 `#6da7ec`, 2 `#b7d3f6`, 3 `#f3a683`, 4 `#ec6b4a`, 5 `#d03b3b`,
-   ≥6 `#8a1616`; rating number stays on the marker (dark ink on the light fills).
-8. **Layout** — no horizontal page scroll; map has height; 4 KPI tiles; 5 band cards.
+7. **Ward choropleth (yellow→red ramp, per user preference)** — 12 ward polygons from
+   `da6r-6gkw` (server-simplified), each filled by its worst gauge: 0 `#fee79a`, 1 `#fdd561`,
+   2 `#fdb63f`, 3 `#f78f33`, 4 `#e95f2b`, 5 `#d03b3b`, ≥6 `#8a1616`; no-gauge ward = gray
+   `#c8c7c0` ("no visibility", e.g. Ward 9). Gauges are uniform dark dots (`#1a1a19`,
+   the ward fill carries severity); dot popup includes the ward name + 24h chart; ward
+   popup lists its stations. Station→ward comes from `:@computed_region_da6r_6gkw`
+   (RG60 is outside every ward polygon → "outside ward layer", not an error).
+8. **Filters** — Station / Rating / Feed-says selects filter the table rows AND gauge dots
+   (selecting rating 5 must shrink both); ward fills and citywide KPIs must NOT change;
+   Clear restores all rows; selections survive an auto-refresh.
+9. **Layout** — no horizontal page scroll; map has height; 4 KPI tiles; 5 band cards.
 
 ## Invariants to respect when editing the dashboard
 
