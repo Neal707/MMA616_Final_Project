@@ -50,7 +50,12 @@ against the source independently.
 8. **Filters** — Station / Rating / Feed-says selects filter the table rows AND gauge dots
    (selecting rating 5 must shrink both); ward fills and citywide KPIs must NOT change;
    Clear restores all rows; selections survive an auto-refresh.
-9. **Layout** — no horizontal page scroll; map has height; 4 KPI tiles; 5 band cards.
+9. **Weather overlays (ECCC GeoMet WMS)** — enabling "Weather radar (animated)" must show the
+   radar control bar, populate ~31 frames from GetCapabilities (rolling ~3 h at 6-min steps —
+   the service offers no 24 h loop; do not "fix" that), and play must advance the MT time label
+   with `TIME=` in the WMS tile URLs. Alerts + lightning are latest-only overlays. The Windy
+   iframe must have no `src` until its `<details>` panel is opened.
+10. **Layout** — no horizontal page scroll; map has height; 4 KPI tiles; 5 band cards.
 
 ## Invariants to respect when editing the dashboard
 

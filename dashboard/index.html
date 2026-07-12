@@ -68,6 +68,10 @@
   .filters select{font:inherit;padding:3px 6px;border:1px solid var(--ring);border-radius:6px;
     background:var(--surface-1);color:var(--ink-1);max-width:200px}
   .filters .fnote{color:var(--ink-muted);font-size:11px}
+  .radarctl{display:none;gap:10px;align-items:center;padding:8px 14px;font-size:12px;color:var(--ink-2);
+    border-top:1px solid var(--grid);flex-wrap:wrap}
+  .radarctl .fnote{color:var(--ink-muted);font-size:10.5px;flex-basis:100%}
+  .radarctl input[type=range]{min-width:120px}
   #map{height:520px;background:var(--grid)}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -143,6 +147,19 @@
       <span style="color:#eda100;font-weight:700">!</span> = road disruption
       (<span style="color:#d03b3b;font-weight:700">red = emergency</span>).</div>
     <div id="map"></div>
+    <div class="radarctl" id="radarCtl">
+      <button id="radarPlay" type="button">▶ play</button>
+      <input type="range" id="radarSlider" min="0" max="0" value="0" style="flex:1">
+      <b id="radarTime">–</b>
+      <span class="fnote">ECCC radar, 6-min frames — the service keeps ~3 h of history (24 h is not offered);
+        alerts &amp; lightning show latest. © ECCC MSC GeoMet</span>
+    </div>
+    <details id="windyBox" style="padding:0 14px 12px">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-2)">Regional radar / wind / storm view (Windy.com embed — loads when opened)</summary>
+      <iframe id="windyFrame" title="Windy.com regional radar"
+        data-src="https://embed.windy.com/embed2.html?lat=53.55&lon=-113.50&detailLat=53.55&detailLon=-113.50&zoom=7&overlay=radar&level=surface&menu=&message=true&calendar=now&type=map&metricWind=km%2Fh&metricTemp=%C2%B0C"
+        width="100%" height="420" style="border:0;border-radius:8px;margin-top:8px"></iframe>
+    </details>
   </div>
   <div class="panel">
     <h2>Stations ranked by severity</h2>
@@ -211,12 +228,76 @@ function initMap(){
   // one click away when the supervisor is actually routing crews or barricades
   pumpLayer = L.layerGroup();
   closureLayer = L.layerGroup();
+  // ECCC MSC GeoMet WMS — live national weather layers (default OFF, like other context)
+  radarLayer = L.tileLayer.wms(GEOMET, {layers:"RADAR_1KM_RRAI", format:"image/png",
+    transparent:true, version:"1.3.0", opacity:.7, attribution:"Radar/alerts/lightning &copy; ECCC MSC GeoMet"});
+  alertsLayer = L.tileLayer.wms(GEOMET, {layers:"ALERTS", format:"image/png",
+    transparent:true, version:"1.3.0", opacity:.35});
+  lightningLayer = L.tileLayer.wms(GEOMET, {layers:"Lightning_2.5km_Density", format:"image/png",
+    transparent:true, version:"1.3.0", opacity:.75});
   L.control.layers(null, {"Ward severity fill":wardLayer, "Rain gauges":markerLayer,
-    "Storm pump stations":pumpLayer, "Road closures (live)":closureLayer},
+    "Storm pump stations":pumpLayer, "Road closures (live)":closureLayer,
+    "Weather radar (animated)":radarLayer, "Weather alerts (ECCC)":alertsLayer,
+    "Lightning density":lightningLayer},
     {collapsed:false, position:"topright"}).addTo(map);
+  map.on("overlayadd", e=>{ if (e.layer===radarLayer){
+    document.getElementById("radarCtl").style.display="flex"; initRadarFrames(); }});
+  map.on("overlayremove", e=>{ if (e.layer===radarLayer){
+    stopRadar(); document.getElementById("radarCtl").style.display="none"; }});
   loadPumps();
   loadWards();
 }
+
+// ---------- ECCC radar animation ----------
+// GeoMet publishes a rolling ~3 h of RADAR_1KM_RRAI at 6-min steps (a 24 h loop is not
+// offered by the service). We read the time extent from GetCapabilities and step the WMS
+// TIME param; tiles cache after the first pass so the loop smooths out.
+const GEOMET = "https://geo.weather.gc.ca/geomet";
+let radarLayer=null, alertsLayer=null, lightningLayer=null;
+let radarFrames=[], radarIdx=0, radarTimer=null;
+async function initRadarFrames(){
+  try{
+    const xml = await fetch(GEOMET+"?service=WMS&version=1.3.0&request=GetCapabilities&layer=RADAR_1KM_RRAI").then(r=>r.text());
+    const m = xml.match(/<Dimension name="time"[^>]*>([^<]+)<\/Dimension>/);
+    if (!m) throw new Error("no time dimension");
+    const [start, end, step] = m[1].trim().split("/");
+    const stepMin = parseInt((step.match(/\d+/)||[6])[0], 10);
+    radarFrames = [];
+    for (let t = Date.parse(start); t <= Date.parse(end); t += stepMin*60000)
+      radarFrames.push(new Date(t).toISOString().split(".")[0]+"Z");
+    const sl = document.getElementById("radarSlider");
+    sl.max = radarFrames.length-1;
+    setRadarFrame(radarFrames.length-1); // newest first
+  }catch(e){
+    console.warn("radar time extent unavailable", e);
+    document.getElementById("radarTime").textContent = "latest";
+  }
+}
+function setRadarFrame(i){
+  if (!radarFrames.length || !radarLayer) return;
+  radarIdx = (i+radarFrames.length) % radarFrames.length;
+  radarLayer.setParams({time: radarFrames[radarIdx]});
+  document.getElementById("radarSlider").value = radarIdx;
+  document.getElementById("radarTime").textContent =
+    new Date(radarFrames[radarIdx]).toLocaleTimeString("en-CA",
+      {timeZone:"America/Edmonton", hour:"2-digit", minute:"2-digit"}) + " MT";
+}
+function stopRadar(){
+  if (radarTimer){ clearInterval(radarTimer); radarTimer=null; }
+  document.getElementById("radarPlay").textContent = "▶ play";
+}
+document.getElementById("radarPlay").addEventListener("click", ()=>{
+  if (radarTimer){ stopRadar(); return; }
+  document.getElementById("radarPlay").textContent = "❚❚ pause";
+  radarTimer = setInterval(()=> setRadarFrame(radarIdx+1), 800);
+});
+document.getElementById("radarSlider").addEventListener("input",
+  e=>{ stopRadar(); setRadarFrame(+e.target.value); });
+// Windy embed loads only when the panel is opened — it is heavy and optional context
+document.getElementById("windyBox").addEventListener("toggle", function(){
+  const f = document.getElementById("windyFrame");
+  if (this.open && !f.src) f.src = f.dataset.src;
+});
 
 // Ward polygons (da6r-6gkw) — the same layer Socrata joins the feed's
 // :@computed_region_da6r_6gkw ids against, so station->ward assignment is authoritative.

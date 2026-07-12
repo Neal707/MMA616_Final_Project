@@ -86,6 +86,9 @@ Ratings 1, 7, 8 have not appeared in live data during this project; the dashboar
 | `cnsu-iagr` Water Levels and Flows | **Rejected** | Last row 2026-06-03 (a month stale at eval) and stations are provincial/upstream, not city drainage |
 | `7fus-qa4r` Rainfall Gauge Results | **Rejected** (see caution 10) | Daily grain, ends 2019, different gauge network |
 | 2014 Flood Mitigation Study layers | **Rejected** | GeoTIFF/map assets, not SODA-queryable |
+| `da6r-6gkw` Wards (boundary layer) | **Merged** (choropleth base) | The exact layer Socrata joins `:@computed_region_da6r_6gkw` against; 12 polygons, `simplify_preserve_topology(the_geom,0.0005)` ≈ 27 KB total |
+| ECCC MSC GeoMet WMS (`geo.weather.gc.ca/geomet`) | **Merged** (weather overlays, default off) | `RADAR_1KM_RRAI` (animated via TIME param — service keeps ~3 h at 6-min steps, **24 h is not offered**), `ALERTS` (current polygons), `Lightning_2.5km_Density` (~3 h at 10-min steps). Time extent read live from GetCapabilities |
+| Windy.com embed | **Merged** (optional iframe, lazy-loaded) | `embed.windy.com/embed2.html` with radar overlay; loads only when the collapsible panel is opened |
 
 ## SoQL patterns
 
