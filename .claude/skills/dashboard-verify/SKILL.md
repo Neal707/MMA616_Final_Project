@@ -40,13 +40,23 @@ against the source independently.
    `openPopup()` on a marker must show an SVG line with one path point per buffered reading and
    the "session data … not official history" caption; with a single-snapshot buffer it must show
    the "builds while the dashboard stays open" message instead of an empty plot.
-7. **Ward choropleth (yellow→red ramp, per user preference)** — 12 ward polygons from
-   `da6r-6gkw` (server-simplified), each filled by its worst gauge: 0 `#fee79a`, 1 `#fdd561`,
-   2 `#fdb63f`, 3 `#f78f33`, 4 `#e95f2b`, 5 `#d03b3b`, ≥6 `#8a1616`; no-gauge ward = gray
-   `#c8c7c0` ("no visibility", e.g. Ward 9). Gauges are uniform dark dots (`#1a1a19`,
-   the ward fill carries severity); dot popup includes the ward name + 24h chart; ward
-   popup lists its stations. Station→ward comes from `:@computed_region_da6r_6gkw`
-   (RG60 is outside every ward polygon → "outside ward layer", not an error).
+7. **District choropleth (yellow→red ramp)** — 15 named planning districts from `avbh-ga6n`
+   (Central, Scona, Jasper Place…), each filled by its worst gauge: 0 `#fee79a`, 1 `#fdd561`,
+   2 `#fdb63f`, 3 `#f78f33`, 4 `#e95f2b`, 5 `#d03b3b`, ≥6 `#8a1616`; no-gauge district = gray
+   `#c8c7c0` ("no visibility"). Gauges are uniform dark dots (`#1a1a19`); dot popup includes
+   the district name + 24h chart; district popup lists its stations. Station→district is
+   client-side point-in-polygon; RG60 is ~4 km outside city limits → "near Southeast"
+   (nearest-district fallback, not an error).
+7b. **Priorities panel** — ordered duty list derived from state: ESCALATE (≥6) → BARRICADE (5)
+   → DISPATCH (4) → PRE-POSITION (rising 3s) → REASSESS (falling ≥4) → VERIFY (blind spots)
+   → ROUTE AROUND (emergency disruptions count). Grouped by district. Empty state reads
+   "ROUTINE MONITORING". Normal band card shows count only, no station list.
+7c. **Sortable columns** — clicking any header sorts (numeric columns start descending);
+   arrow indicator on the active header; blind rows stay pinned on top regardless of sort.
+   There is NO "Updated" column — freshness lives in the header stamp only.
+7d. **Forecast panel** — Open-Meteo next-24h: headline (total mm, peak hour, max gusts) +
+   24 precip bars with °C labels; on API failure it says "decide from live gauges and radar",
+   never blocks the rest of the dashboard.
 8. **Filters** — Station / Rating / Feed-says selects filter the table rows AND gauge dots
    (selecting rating 5 must shrink both); ward fills and citywide KPIs must NOT change;
    Clear restores all rows; selections survive an auto-refresh.

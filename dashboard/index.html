@@ -72,11 +72,20 @@
     border-top:1px solid var(--grid);flex-wrap:wrap}
   .radarctl .fnote{color:var(--ink-muted);font-size:10.5px;flex-basis:100%}
   .radarctl input[type=range]{min-width:120px}
+  ol.prio{margin:0;padding:2px 14px 12px 30px;font-size:13.5px}
+  ol.prio li{margin:6px 0;padding:6px 10px;border-left:4px solid var(--grid);
+    background:var(--page);border-radius:0 7px 7px 0}
+  ol.prio .verb{font-weight:750;letter-spacing:.02em}
   #map{height:520px;background:var(--grid)}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);
     text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--grid)}
+  th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
+  th[data-k]:hover{color:var(--ink-1)}
+  th[data-k].sorted{color:var(--ink-1)}
+  th[data-k].sorted::after{content:" ▲";font-size:9px}
+  th[data-k].sorted.desc::after{content:" ▼";font-size:9px}
   td{padding:7px 8px;border-bottom:1px solid var(--grid);vertical-align:middle}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   tr:hover td{background:var(--band-0-wash)}
@@ -122,6 +131,11 @@
   </div>
 </div>
 
+<div class="panel" style="margin-bottom:14px">
+  <h2>Priorities — next 30 minutes</h2>
+  <ol class="prio" id="prioList"><li style="color:var(--ink-muted)">assessing…</li></ol>
+</div>
+
 <div class="tiles">
   <div class="tile"><div class="k">Peak 24h rainfall</div><div class="v" id="kpiPeak">–</div><div class="n" id="kpiPeakN"></div></div>
   <div class="tile"><div class="k">Stations at Dispatch or worse (rating ≥ 4)</div><div class="v" id="kpiDispatch">–</div><div class="n" id="kpiDispatchN"></div></div>
@@ -130,6 +144,12 @@
 </div>
 
 <div class="bands" id="bands"></div>
+
+<div class="panel" style="margin-bottom:14px">
+  <h2>Will it build? — forecast next 24 h (Open-Meteo, Edmonton)</h2>
+  <div class="note" id="fcHead">loading forecast…</div>
+  <div id="fcChart" style="padding:0 14px 12px"></div>
+</div>
 
 <div class="main">
   <div class="panel">
@@ -174,8 +194,9 @@
     <div style="overflow-x:auto">
     <table id="tbl">
       <thead><tr>
-        <th>Station</th><th>District</th><th class="num">24h total</th><th>Rating</th><th>Trend (session)</th>
-        <th>Feed says</th><th class="num">Updated</th>
+        <th data-k="station">Station</th><th data-k="district">District</th>
+        <th class="num" data-k="mm">24h total</th><th data-k="rating">Rating</th>
+        <th data-k="trend">Trend (session)</th><th data-k="says">Feed says</th>
       </tr></thead>
       <tbody></tbody>
     </table>
@@ -235,7 +256,7 @@ function initMap(){
     transparent:true, version:"1.3.0", opacity:.35});
   lightningLayer = L.tileLayer.wms(GEOMET, {layers:"Lightning_2.5km_Density", format:"image/png",
     transparent:true, version:"1.3.0", opacity:.75});
-  L.control.layers(null, {"Ward severity fill":wardLayer, "Rain gauges":markerLayer,
+  L.control.layers(null, {"District severity fill":wardLayer, "Rain gauges":markerLayer,
     "Storm pump stations":pumpLayer, "Road closures (live)":closureLayer,
     "Weather radar (animated)":radarLayer, "Weather alerts (ECCC)":alertsLayer,
     "Lightning density":lightningLayer},
@@ -299,40 +320,64 @@ document.getElementById("windyBox").addEventListener("toggle", function(){
   if (this.open && !f.src) f.src = f.dataset.src;
 });
 
-// Ward polygons (da6r-6gkw) — the same layer Socrata joins the feed's
-// :@computed_region_da6r_6gkw ids against, so station->ward assignment is authoritative.
-// Geometry server-simplified: ~27 KB for all 12 wards.
-let wardGeoJSON = null; // L.geoJSON once loaded; restyled on every render
-function loadWards(){
+// District polygons (avbh-ga6n, City Plan Planning Districts) — the 15 named districts of
+// the Edmonton reference map (Central, Scona, Jasper Place, …). No computed-region join
+// exists for this layer, so stations are assigned by point-in-polygon (23 pts × 15 polys),
+// with a nearest-district fallback for gauges outside city limits (RG60 is ~4 km east).
+let districtGeoJSON = null, districtFeats = []; // restyled on every render
+function loadWards(){ // name kept for the initMap call; loads districts
   if (!wardLayer) return;
-  fetch("https://data.edmonton.ca/resource/da6r-6gkw.json?$select=_feature_id,name,simplify_preserve_topology(the_geom,0.0005) as geom&$limit=15")
+  fetch("https://data.edmonton.ca/resource/avbh-ga6n.json?$select=district_name,simplify_preserve_topology(geometry_multipolygon,0.0005) as geom&$limit=20")
     .then(r=>r.json()).then(rows=>{
-      const feats = rows.map(w=>({type:"Feature", properties:{id:w._feature_id, name:w.name}, geometry:w.geom}));
-      wardGeoJSON = L.geoJSON({type:"FeatureCollection", features:feats}, {
-        style: f => wardStyle(f.properties.id),
-        onEachFeature: (f, lyr) => lyr.bindPopup(()=>wardPopup(f.properties), {maxWidth:320})
+      districtFeats = rows.map(w=>({type:"Feature", properties:{name:w.district_name}, geometry:w.geom}));
+      districtGeoJSON = L.geoJSON({type:"FeatureCollection", features:districtFeats}, {
+        style: f => districtStyle(f.properties.name),
+        onEachFeature: (f, lyr) => lyr.bindPopup(()=>districtPopup(f.properties), {maxWidth:320})
       });
-      wardLayer.addLayer(wardGeoJSON);
-      if (lastStations.length) restyleWards();
-    }).catch(e=>console.warn("ward layer unavailable", e));
+      wardLayer.addLayer(districtGeoJSON);
+      if (lastRows) render(lastRows); // re-render so stations pick up district assignment
+    }).catch(e=>console.warn("district layer unavailable", e));
 }
-let lastStations = []; // latest render's stations, for ward styling/popups
-const wardLabel = id => id? "Ward "+parseInt(id,10) : null;
-function wardStations(id){ return lastStations.filter(s=>s.ward===id); }
-function wardStyle(id){
-  const inWard = wardStations(id).filter(s=>s.hasReading);
-  const worst = inWard.length? Math.max(...inWard.map(s=>s.rating)) : null;
+let lastStations = []; // latest render's stations, for district styling/popups
+function pointInMultiPoly(lat, lon, mp){
+  let inside = false;
+  for (const poly of mp) for (const ring of poly){ // all rings: even-odd handles holes
+    let j = ring.length-1;
+    for (let i=0; i<ring.length; j=i++){
+      const [xi,yi]=ring[i], [xj,yj]=ring[j];
+      if (((yi>lat)!==(yj>lat)) && lon < (xj-xi)*(lat-yi)/(yj-yi)+xi) inside = !inside;
+    }
+  }
+  return inside;
+}
+function districtOf(lat, lon){
+  if (lat==null || !districtFeats.length) return null;
+  for (const f of districtFeats)
+    if (pointInMultiPoly(lat, lon, f.geometry.coordinates)) return f.properties.name;
+  // outside every district (city edge): nearest boundary vertex, flagged approximate
+  let best=null;
+  for (const f of districtFeats) for (const p of f.geometry.coordinates) for (const r of p)
+    for (const [x,y] of r){
+      const d=(y-lat)*(y-lat)+((x-lon)*0.6)*((x-lon)*0.6);
+      if (!best || d<best[0]) best=[d, f.properties.name];
+    }
+  return best? "near "+best[1] : null;
+}
+function districtStations(name){ return lastStations.filter(s=>s.district===name); }
+function districtStyle(name){
+  const inD = districtStations(name).filter(s=>s.hasReading);
+  const worst = inD.length? Math.max(...inD.map(s=>s.rating)) : null;
   return {color:"#898781", weight:1, fillColor: worst===null? NO_GAUGE_FILL : rampColor(worst),
           fillOpacity:.55};
 }
-function restyleWards(){ if (wardGeoJSON) wardGeoJSON.setStyle(f => wardStyle(f.properties.id)); }
-function wardPopup(props){
-  const sts = wardStations(props.id);
-  if (!sts.length) return `<b>${wardLabel(props.id)}</b><br>⚠ No rain gauge in this ward — <b>no visibility here</b>, not calm. Judge from adjacent gauges and field reports.`;
+function restyleWards(){ if (districtGeoJSON) districtGeoJSON.setStyle(f => districtStyle(f.properties.name)); }
+function districtPopup(props){
+  const sts = districtStations(props.name);
+  if (!sts.length) return `<b>${props.name}</b><br>⚠ No rain gauge in this district — <b>no visibility here</b>, not calm. Judge from adjacent gauges and field reports.`;
   const lines = sts.map(s=> s.hasReading?
       `${s.station}: <b>${s.mm.toFixed(1)} mm</b> · rating ${s.rating} ${bandOf(s.rating).name}` :
       `${s.station}: ⚠ no usable reading`).join("<br>");
-  return `<b>${wardLabel(props.id)}</b> — ${sts.length} gauge(s)<br>${lines}<br>
+  return `<b>${props.name}</b> — ${sts.length} gauge(s)<br>${lines}<br>
     <span style="color:#898781;font-size:11px">Fill = worst gauge; readings apply at gauge points only.</span>`;
 }
 
@@ -356,12 +401,15 @@ async function loadPumps(){
 }
 // Live traffic disruptions (k4tx-5k8p) — closures already in effect change where crews
 // and barricades can go; refreshed on every load cycle
+let lastEmergDisruptions = 0;
 async function loadClosures(){
   if (!closureLayer) return;
   try{
     const rows = await fetch("https://data.edmonton.ca/resource/k4tx-5k8p.json?$where=status in('Current','Emergency','Revised')&$limit=1000").then(r=>r.json());
     closureLayer.clearLayers();
     const now = Date.now();
+    const emergNow = rows.filter(d=>d.status==="Emergency").length;
+    if (emergNow !== lastEmergDisruptions){ lastEmergDisruptions = emergNow; rerender(); }
     // only what changes a barricade/dispatch route: full closures + emergencies, in effect now
     rows.filter(d => d.point && d.point.coordinates &&
         (d.status==="Emergency" || d.impact==="Total Closure") &&
@@ -509,6 +557,14 @@ function syncFilterOptions(stations){
 }
 let lastRows = null;
 function rerender(){ if (lastRows) render(lastRows); }
+// column sorting: click a header to sort; numeric columns start descending (worst first)
+let sortState = {k:"rating", dir:-1};
+document.querySelectorAll("#tbl th[data-k]").forEach(th => th.addEventListener("click", ()=>{
+  const k = th.dataset.k;
+  if (sortState.k === k) sortState.dir *= -1;
+  else sortState = {k, dir: (k==="mm"||k==="rating"||k==="trend")? -1 : 1};
+  rerender();
+}));
 ["fStation","fRating","fSays"].forEach(id => document.getElementById(id).addEventListener("change", rerender));
 document.getElementById("fClear").addEventListener("click",
   ()=>{ ["fStation","fRating","fSays"].forEach(id=>document.getElementById(id).value=""); rerender(); });
@@ -527,10 +583,10 @@ function render(rows){
       desc: r.storm_rating_description||"",
       lat: r.location? parseFloat(r.location.latitude):null,
       lon: r.location? parseFloat(r.location.longitude):null,
-      upd: r[":updated_at"]? new Date(r[":updated_at"]) : null,
-      ward: r[":@computed_region_da6r_6gkw"] || null
+      upd: r[":updated_at"]? new Date(r[":updated_at"]) : null
     };
   }).sort((a,b)=> (b.hasReading?b.rating:999)-(a.hasReading?a.rating:999) || (b.mm||0)-(a.mm||0));
+  stations.forEach(s => s.district = districtOf(s.lat, s.lon));
 
   const newestStamp = stations.reduce((m,s)=> s.upd && (!m||s.upd>m)? s.upd:m, null);
   const buf = pushBuf(stations, newestStamp? newestStamp.getTime() : NaN);
@@ -605,12 +661,40 @@ function render(rows){
   // band strip
   document.getElementById("bands").innerHTML = BANDS.map(b=>{
     const inBand = withReading.filter(s=>s.rating>=b.min && s.rating<=b.max);
+    // Normal stations are deliberately not listed — the supervisor's attention belongs on
+    // the exceptions; the count is enough to confirm the rest of the network is quiet
+    const list = b.min>=3? (inBand.length? inBand.map(s=>s.station).join(", "):"—")
+                         : (inBand.length? "network quiet here":"—");
     return `<div class="band" style="border-left-color:${b.color};${inBand.length&&b.min>=3? 'background:'+b.wash:''}">
       <div class="bn"><span>${b.icon} ${b.name}</span><span style="color:var(--ink-muted);font-weight:500">r ${b.min===0?'0–2':(b.max>8?'6+':b.min)}</span></div>
       <div class="bc">${inBand.length}</div>
-      <div class="bd">${inBand.length? inBand.map(s=>s.station).join(", "):"—"}</div>
+      <div class="bd">${list}</div>
       <div class="ba">${b.action}</div></div>`;
   }).join("");
+
+  // priorities — the state above, converted into an ordered duty list
+  // (importance = rating band; urgency = trend & blindness; geography = district)
+  const byDistrict = list => {
+    const g = {};
+    list.forEach(s => (g[s.district||"—"] = g[s.district||"—"]||[]).push(s.station));
+    return Object.entries(g).map(([d,st])=>`<b>${d}</b> (${st.join(", ")})`).join(" · ");
+  };
+  const prio = [];
+  const esc = withReading.filter(s=>s.rating>=6);
+  if (esc.length) prio.push({c:"var(--band-6)", verb:"ESCALATE", txt:`notify Emergency Management, start public advisories — ${byDistrict(esc)}`});
+  const barr = withReading.filter(s=>s.rating===5);
+  if (barr.length) prio.push({c:"var(--band-5)", verb:"BARRICADE", txt:`close underpasses & low areas — ${byDistrict(barr)}`});
+  const dsp = withReading.filter(s=>s.rating===4);
+  if (dsp.length) prio.push({c:"var(--band-4)", verb:"DISPATCH", txt:`crews to catch basins & pump checks — ${byDistrict(dsp)}`});
+  const pre = trends.filter(x=>x.t && x.t.dir.includes("rising") && x.s.hasReading && x.s.rating>=3 && x.s.rating<4).map(x=>x.s);
+  if (pre.length) prio.push({c:"var(--band-3)", verb:"PRE-POSITION", txt:`Monitor stations rising — ${byDistrict(pre)}`});
+  const falling = trends.filter(x=>x.t && x.t.dir.includes("falling") && x.s.hasReading && x.s.rating>=4).map(x=>x.s);
+  if (falling.length) prio.push({c:"var(--band-0)", verb:"REASSESS", txt:`easing at ${byDistrict(falling)} — consider standing down staged resources on next publish`});
+  if (blind.length) prio.push({c:"var(--ink-muted)", verb:"VERIFY", txt:`no visibility at ${blind.join(", ")} — blind spots, confirm by field report`});
+  if (lastEmergDisruptions > 0) prio.push({c:"var(--band-5)", verb:"ROUTE AROUND", txt:`${lastEmergDisruptions} emergency road disruption(s) in effect — enable the closures map layer before sending crews`});
+  document.getElementById("prioList").innerHTML = prio.length?
+    prio.map(p=>`<li style="border-left-color:${p.c}"><span class="verb">${p.verb}</span> — ${p.txt}</li>`).join("") :
+    `<li style="border-left-color:var(--band-0)"><span class="verb">ROUTINE MONITORING</span> — no station at Monitor or above, no blind spots. Next reassessment on auto-refresh.</li>`;
 
   // filters — repopulate options (preserving selection), then read active values
   syncFilterOptions(stations);
@@ -620,8 +704,7 @@ function render(rows){
                       (!fv.says   || s.desc===fv.says);
   const anyFilter = !!(fv.station || fv.rating || fv.says);
 
-  // table — blind spots (vanished or unreadable stations) pinned on top, styled as such;
-  // per-row age is shown plain: the stamp is batch-level, so it is context, not an alarm
+  // table — blind spots (vanished or unreadable stations) pinned on top, styled as such
   const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
   const missingRows = missing
     .filter(id => !anyFilter || fv.station===id)
@@ -631,31 +714,44 @@ function render(rows){
       <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
       <td><span style="color:var(--ink-muted)">—</span></td>
       <td class="desc-cell"><b>No visibility</b> — station dropped from the feed this session. Blind spot, not calm.</td>
-      <td class="num age-stale">⚠ gone</td>
     </tr>`).join("");
-  const bodyRows = trends.filter(({s}) => passes(s) || (!anyFilter && !s.hasReading)).map(({s,t})=>{
-    const district = wardLabel(s.ward) || "outside ward layer";
+  const cmp = {
+    station: (a,b)=> a.s.station.localeCompare(b.s.station),
+    district: (a,b)=> (a.s.district||"~").localeCompare(b.s.district||"~"),
+    mm: (a,b)=> (a.s.mm||0)-(b.s.mm||0),
+    rating: (a,b)=> (a.s.rating||0)-(b.s.rating||0) || (a.s.mm||0)-(b.s.mm||0),
+    trend: (a,b)=> ((a.t? a.t.d : -1e9))-((b.t? b.t.d : -1e9)),
+    says: (a,b)=> a.s.desc.localeCompare(b.s.desc)
+  }[sortState.k] || null;
+  const sorted = trends.filter(({s}) => passes(s) || (!anyFilter && !s.hasReading))
+    .sort((a,b)=>{ // blind rows stay pinned on top regardless of sort
+      if (a.s.hasReading !== b.s.hasReading) return a.s.hasReading? 1 : -1;
+      return cmp? cmp(a,b)*sortState.dir : 0;
+    });
+  document.querySelectorAll("#tbl th[data-k]").forEach(th=>{
+    th.classList.toggle("sorted", th.dataset.k===sortState.k);
+    th.classList.toggle("desc", th.dataset.k===sortState.k && sortState.dir===-1);
+  });
+  const bodyRows = sorted.map(({s,t})=>{
+    const district = s.district || "—";
     if (!s.hasReading) return `<tr class="blind">
       <td><b>${s.station}</b></td><td>${district}</td>
       <td class="num">—</td>
       <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
       <td><span style="color:var(--ink-muted)">—</span></td>
       <td class="desc-cell"><b>No usable reading</b> — value missing or malformed. Blind spot, not calm.</td>
-      <td class="num age-stale">⚠</td>
     </tr>`;
     const b = bandOf(s.rating), chipBg = MARKER_HEX[b.name];
-    const age = s.upd? Math.round((now-s.upd)/60000) : null;
     return `<tr>
       <td><b>${s.station}</b></td><td>${district}</td>
       <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*70).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
       <td><span class="chip" style="background:${chipBg};color:${inkOn(chipBg)}">${b.icon} ${s.rating} ${b.name}</span></td>
       <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m${t.note? ' · '+t.note : ''}</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">awaiting next feed publish…</span>`}</td>
       <td class="desc-cell">${s.desc}</td>
-      <td class="num age-ok">${age===null? "no stamp" : age+" min"}</td>
     </tr>`;
   }).join("");
   document.querySelector("#tbl tbody").innerHTML = missingRows + (bodyRows ||
-    `<tr><td colspan="7" style="color:var(--ink-muted);padding:14px">No station matches the current filters.</td></tr>`);
+    `<tr><td colspan="6" style="color:var(--ink-muted);padding:14px">No station matches the current filters.</td></tr>`);
   const snaps = buf.length, span = snaps>1? Math.round((buf[buf.length-1].t-buf[0].t)/60000):0;
   document.getElementById("trendNote").textContent = (snaps<2?
     "Trend appears once the feed publishes a second batch (~15 min cadence) — leave this page open." :
@@ -682,7 +778,7 @@ function render(rows){
         {radius:6, color:"#fff", weight:1.5, fillColor:"#1a1a19", fillOpacity:.9});
       m.bindTooltip(s.station, {direction:"top", offset:[0,-6]});
       // content as a function so the chart reads the buffer at click time, not render time
-      m.bindPopup(()=>`<b>${s.station}</b> — ${wardLabel(s.ward)||"outside ward layer"}<br>${b.icon} ${b.name} · ${s.mm.toFixed(1)} mm / 24h · rating ${s.rating}<br><i>${s.desc}</i><br>${b.action}${stationChart(loadBuf(), s.station)}`,
+      m.bindPopup(()=>`<b>${s.station}</b> — ${s.district||"—"}<br>${b.icon} ${b.name} · ${s.mm.toFixed(1)} mm / 24h · rating ${s.rating}<br><i>${s.desc}</i><br>${b.action}${stationChart(loadBuf(), s.station)}`,
         {maxWidth:320});
       markerLayer.addLayer(m);
     });
@@ -692,6 +788,45 @@ function render(rows){
     restyleWards();
   }
   document.getElementById("failbar").style.display="none";
+}
+
+// ---------- forecast (Open-Meteo, CORS-open, no key) ----------
+// Answers the supervisor's forward question the gauges cannot: "will it build?"
+let fcCache = {t:0};
+async function loadForecast(){
+  if (Date.now()-fcCache.t < 30*60*1000 && fcCache.data){ return; }
+  try{
+    const d = await fetch("https://api.open-meteo.com/v1/forecast?latitude=53.55&longitude=-113.50&hourly=temperature_2m,precipitation,wind_gusts_10m&forecast_days=2&timezone=America%2FEdmonton").then(r=>r.json());
+    fcCache = {t:Date.now(), data:d};
+    const H = d.hourly, nowH = H.time.findIndex(t=>Date.parse(t)>=Date.now())-1;
+    const idx = Math.max(0,nowH), hrs = [];
+    for (let i=idx; i<Math.min(idx+24, H.time.length); i++)
+      hrs.push({t:H.time[i], p:H.precipitation[i]||0, temp:H.temperature_2m[i], gust:H.wind_gusts_10m[i]});
+    const tot = hrs.reduce((a,h)=>a+h.p,0);
+    const peak = hrs.reduce((m,h)=>h.p>m.p?h:m, hrs[0]);
+    const maxGust = Math.max(...hrs.map(h=>h.gust||0));
+    const fmtH = t=>new Date(t).toLocaleTimeString("en-CA",{hour:"numeric"});
+    document.getElementById("fcHead").innerHTML = tot<0.2?
+      `<b>No meaningful rain expected in the next 24 h</b> (max gusts ${maxGust.toFixed(0)} km/h). Model forecast — the gauges above remain the ground truth.` :
+      `<b>${tot.toFixed(1)} mm expected over the next 24 h</b> — heaviest ≈ ${peak.p.toFixed(1)} mm/h around ${fmtH(peak.t)} · max gusts ${maxGust.toFixed(0)} km/h. Model forecast — the gauges above remain the ground truth.`;
+    // precip bars with temperature labels underneath — one axis, no overlaid second scale
+    const W=760, Hh=96, bw=W/24, pMax=Math.max(1, ...hrs.map(h=>h.p));
+    const bars = hrs.map((h,i)=>{
+      const bh = h.p/pMax*54;
+      return `<rect x="${(i*bw+3).toFixed(1)}" y="${(60-bh).toFixed(1)}" width="${(bw-6).toFixed(1)}" height="${Math.max(bh,h.p>0?2:0).toFixed(1)}" rx="2" fill="var(--seq-450)"/>` +
+        (h.p>=0.5? `<text x="${(i*bw+bw/2).toFixed(1)}" y="${(56-bh).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--ink-2)">${h.p.toFixed(1)}</text>`:"") +
+        (i%3===0? `<text x="${(i*bw+bw/2).toFixed(1)}" y="74" text-anchor="middle" font-size="9" fill="var(--ink-muted)">${fmtH(h.t)}</text>
+                   <text x="${(i*bw+bw/2).toFixed(1)}" y="90" text-anchor="middle" font-size="9.5" fill="var(--ink-2)">${Math.round(h.temp)}°</text>`:"");
+    }).join("");
+    document.getElementById("fcChart").innerHTML =
+      `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;display:block" role="img" aria-label="Hourly precipitation forecast">
+        <line x1="0" y1="60" x2="${W}" y2="60" stroke="var(--baseline)" stroke-width="1"/>${bars}
+        <text x="${W}" y="10" text-anchor="end" font-size="9" fill="var(--ink-muted)">bars = precip mm/h · bottom row = °C</text>
+      </svg>`;
+  }catch(e){
+    document.getElementById("fcHead").textContent = "Forecast unavailable — decide from live gauges and radar.";
+    console.warn("forecast unavailable", e);
+  }
 }
 
 // ---------- fetch loop ----------
@@ -704,7 +839,8 @@ async function load(){
     const rows = await res.json();
     if(!rows.length) throw new Error("empty response");
     render(rows);
-    loadClosures(); // context layer refreshes on the same cycle; failure is non-fatal
+    loadClosures(); // context layers refresh on the same cycle; failures are non-fatal
+    loadForecast();
   }catch(e){
     // keep the last-known data-as-of visible: the numbers still on screen have an age,
     // and erasing their timestamp would hide exactly what the supervisor needs to know
