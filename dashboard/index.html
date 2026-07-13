@@ -165,7 +165,8 @@
       Click a ward for its stations, a dot for that station's 24h rainfall line.
       Context layers (toggle top-right): <b>P</b> = pump station ·
       <span style="color:#eda100;font-weight:700">!</span> = road disruption
-      (<span style="color:#d03b3b;font-weight:700">red = emergency</span>).</div>
+      (<span style="color:#d03b3b;font-weight:700">red = emergency</span>) ·
+      <b>▣</b> = live highway camera (click to view conditions without driving out).</div>
     <div id="map"></div>
     <div class="radarctl" id="radarCtl">
       <button id="radarPlay" type="button">▶ play</button>
@@ -214,7 +215,7 @@
 <script>
 "use strict";
 const API = "https://data.edmonton.ca/resource/x4rm-mppc.json?$$exclude_system_fields=false&$limit=100";
-const REFRESH_MS = 5*60*1000, STALE_MIN = 60, BUF_KEY = "edm_rain_buffer_v2";
+const REFRESH_MS = 5*60*1000, STALE_MIN = 60, BUF_KEY = "edm_rain_buffer_v3";
 const BANDS = [
   {min:0,  max:2,  name:"Normal",    color:"var(--band-0)", wash:"var(--band-0-wash)", icon:"●", action:"Routine monitoring"},
   {min:3,  max:3,  name:"Monitor",   color:"var(--band-3)", wash:"var(--band-3-wash)", icon:"◆", action:"Watch closely; pre-position if rising"},
@@ -234,7 +235,38 @@ const inkOn = hex => { // dark text on light fills, white on deep ones
 const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
 const fmtMm = v => v.toFixed(1)+" mm";
 
-let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, timer=null;
+let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, cameraLayer=null, timer=null;
+
+// Alberta 511 highway cameras around Edmonton (ring road & approaches). The 511 JSON API
+// blocks browser CORS, so LOCATIONS are a baked snapshot (17 cams, taken 2026-07-12 from
+// https://511.alberta.ca/api/v2/get/cameras) — stable infrastructure, like pump stations.
+// IMAGES are fetched live (the /map/Cctv/<id> endpoints serve open-CORS PNGs), with a
+// cache-buster so each popup open shows the current frame.
+const CAMERAS = [{"lat":53.6098,"lon":-113.354,"loc":"Anthony Henday Drive at North Saskatchewan River (east)","rd":"Hwy 216","v":[{"id":117,"d":"N/A"},{"id":118,"d":"N/A"},{"id":119,"d":"N/A"}]},{"lat":53.5707,"lon":-113.272,"loc":"Hwy 16 at Rge Rd 231 / Clover Bar Rd","rd":"Hwy 16","v":[{"id":273,"d":"North side of HWY"},{"id":275,"d":"North side of HWY"},{"id":276,"d":"North side of HWY"}]},{"lat":53.7088,"lon":-113.271,"loc":"Hwy 15 SW of Hwy 37","rd":"Hwy 15","v":[{"id":359,"d":"East Side of Hwy 15"}]},{"lat":53.4307,"lon":-113.492,"loc":"Hwy 2 South of Hwy 216","rd":"Hwy 2","v":[{"id":530,"d":"N/A"},{"id":531,"d":"N/A"},{"id":532,"d":"N/A"}]},{"lat":53.4355,"lon":-113.503,"loc":"Hwy 216 W of Hwy 2","rd":"Hwy 216","v":[{"id":536,"d":"WB Ramp"},{"id":537,"d":"WB Ramp"},{"id":538,"d":"WB Ramp"}]},{"lat":53.6338,"lon":-113.393,"loc":"Hwy 216 at Hwy 15","rd":"Hwy 216","v":[{"id":120,"d":"East side"},{"id":121,"d":"East side"}]},{"lat":53.63378,"lon":-113.39285,"loc":"Hwy 216 & Hwy 15 Interchange","rd":"Hwy 216","v":[{"id":114,"d":"East"},{"id":115,"d":"South"},{"id":116,"d":"West"}]},{"lat":53.5688,"lon":-113.344,"loc":"Anthony Henday Dr & Hwy 16 Interchange","rd":"Hwy 216","v":[{"id":122,"d":"NB Ramp"},{"id":123,"d":"NB Ramp"},{"id":125,"d":"NB Ramp"},{"id":126,"d":"NB Ramp"}]},{"lat":53.4372,"lon":-113.483,"loc":"Anthony Henday Dr & 91 Street Overpass","rd":"Hwy 216","v":[{"id":533,"d":"EB south side"},{"id":534,"d":"view 2"},{"id":535,"d":"view 3"}]},{"lat":53.5417,"lon":-113.663,"loc":"Hwy 216 & Hwy 16A Interchange (West)","rd":"Hwy 216","v":[{"id":127,"d":"16A WB"},{"id":128,"d":"16A WB"},{"id":129,"d":"16A WB"}]},{"lat":53.5375,"lon":-113.654,"loc":"Hwy 216 & Hwy 16A Interchange (East)","rd":"Hwy 216","v":[{"id":130,"d":"16A EB"},{"id":131,"d":"16A EB"},{"id":132,"d":"16A EB"}]},{"lat":53.518,"lon":-113.657,"loc":"Hwy 216 & Whitemud Drive Interchange","rd":"Hwy 216","v":[{"id":133,"d":"NB east side"},{"id":134,"d":"view 2"},{"id":135,"d":"view 3"}]},{"lat":53.5129,"lon":-113.66,"loc":"Anthony Henday Dr & Whitemud Dr West Interchange","rd":"Hwy 216","v":[{"id":542,"d":"SB west side"},{"id":543,"d":"view 2"},{"id":544,"d":"view 3"}]},{"lat":53.5408,"lon":-113.66,"loc":"Anthony Henday Dr & Stony Plain Rd West Interchange","rd":"Hwy 216","v":[{"id":545,"d":"SB west side"},{"id":546,"d":"view 2"},{"id":547,"d":"view 3"},{"id":548,"d":"view 4"}]},{"lat":53.5726,"lon":-113.659,"loc":"Hwy 216 & Hwy 16 Interchange (West)","rd":"Hwy 216","v":[{"id":136,"d":"16 EB to AHD NB"},{"id":137,"d":"view 2"},{"id":138,"d":"view 3"}]},{"lat":53.5755,"lon":-113.664,"loc":"Hwy 216 & Hwy 16 Interchange (West ramp)","rd":"Hwy 216","v":[{"id":351,"d":"16 WB to AHD SB"},{"id":352,"d":"view 2"},{"id":353,"d":"view 3"}]},{"lat":53.5746,"lon":-113.666,"loc":"Anthony Henday Dr & Yellowhead Trail West Interchange","rd":"Hwy 216","v":[{"id":549,"d":"SB Ramp"},{"id":550,"d":"view 2"},{"id":551,"d":"view 3"},{"id":552,"d":"view 4"}]}];
+const camUrl = id => `https://511.alberta.ca/map/Cctv/${id}?t=${Date.now()}`;
+function swapCam(imgEl, viewId){ imgEl.src = camUrl(viewId); }
+function loadCameras(){
+  if (!cameraLayer) return;
+  CAMERAS.forEach((c,ci)=>{
+    const m = L.marker([c.lat,c.lon],{icon: L.divIcon({className:"",
+      html:`<div style="width:20px;height:16px;border-radius:3px;background:#3a3935;border:1.5px solid #fff;
+        box-shadow:0 1px 3px rgba(0,0,0,.35);color:#fff;font:700 10px/13px system-ui;text-align:center">▣</div>`,
+      iconSize:[20,16], iconAnchor:[10,8]})});
+    m.bindTooltip("📷 "+c.loc, {direction:"top", offset:[0,-8]});
+    m.bindPopup(()=>{
+      const imgId = "cam_img_"+ci;
+      const btns = c.v.length>1? `<div style="margin-top:4px">`+c.v.map((v,i)=>
+        `<button type="button" style="font-size:10.5px;margin-right:4px;padding:1px 7px;cursor:pointer"
+          onclick="swapCam(document.getElementById('${imgId}'), ${v.id})">${i+1}. ${v.d||"view "+(i+1)}</button>`).join("")+`</div>` : "";
+      return `<b>📷 ${c.loc}</b> <span style="color:#898781">(${c.rd})</span><br>
+        <img id="${imgId}" src="${camUrl(c.v[0].id)}" width="288" style="border-radius:6px;margin-top:5px"
+          alt="live camera: ${c.loc}" onerror="this.alt='camera image unavailable';this.style.display='none'">
+        ${btns}
+        <div style="color:#898781;font-size:10.5px;margin-top:3px">Live image, Alberta 511 (provincial highways) — refreshed each time the popup opens</div>`;
+    }, {maxWidth:320});
+    cameraLayer.addLayer(m);
+  });
+}
 
 function initMap(){
   if (typeof L === "undefined"){ document.getElementById("map").innerHTML =
@@ -249,6 +281,7 @@ function initMap(){
   // one click away when the supervisor is actually routing crews or barricades
   pumpLayer = L.layerGroup();
   closureLayer = L.layerGroup();
+  cameraLayer = L.layerGroup();
   // ECCC MSC GeoMet WMS — live national weather layers (default OFF, like other context)
   radarLayer = L.tileLayer.wms(GEOMET, {layers:"RADAR_1KM_RRAI", format:"image/png",
     transparent:true, version:"1.3.0", opacity:.7, attribution:"Radar/alerts/lightning &copy; ECCC MSC GeoMet"});
@@ -258,9 +291,11 @@ function initMap(){
     transparent:true, version:"1.3.0", opacity:.75});
   L.control.layers(null, {"District severity fill":wardLayer, "Rain gauges":markerLayer,
     "Storm pump stations":pumpLayer, "Road closures (live)":closureLayer,
+    "Live cameras (Alberta 511)":cameraLayer,
     "Weather radar (animated)":radarLayer, "Weather alerts (ECCC)":alertsLayer,
     "Lightning density":lightningLayer},
     {collapsed:false, position:"topright"}).addTo(map);
+  loadCameras();
   map.on("overlayadd", e=>{ if (e.layer===radarLayer){
     document.getElementById("radarCtl").style.display="flex"; initRadarFrames(); }});
   map.on("overlayremove", e=>{ if (e.layer===radarLayer){
@@ -440,16 +475,19 @@ function loadBuf(){
   try{ memBuf = JSON.parse(localStorage.getItem(BUF_KEY))||[] }catch(e){ memBuf = [] }
   return memBuf;
 }
-// One buffer point per FEED PUBLISH, not per page refresh: the publisher stamps every
-// row with one batch :updated_at, so a new stamp = new data. Refreshing faster than the
-// feed publishes must not add duplicate points — that made every trend read "+0.0 mm/5m"
-// against a snapshot that was the same publish seen twice.
+// Buffer sampling: one point when the feed publishes a new batch (stamp advances) PLUS a
+// steady point every 10 minutes regardless — so the 24h line has a time-true x-axis that
+// accumulates toward a full day while the page stays open. Flat segments during quiet
+// spells are honest (the current 24h total IS unchanged); the curve shape appears as soon
+// as the feed moves. Page refreshes between samples never add duplicate points.
 function pushBuf(stations, stampMs){
   const now = Date.now();
   let buf = loadBuf().filter(s => now - s.t < 24*3600*1000);
-  const t = Number.isFinite(stampMs)? stampMs : now; // publish time, not view time
-  if (!buf.length || t > buf[buf.length-1].t){
-    const snap = {t, st:{}};
+  const last = buf[buf.length-1];
+  const stampChanged = Number.isFinite(stampMs) && (!last || stampMs !== last.stamp);
+  const sampleDue = !last || now - last.t >= 10*60*1000;
+  if (stampChanged || sampleDue){
+    const snap = {t: now, stamp: Number.isFinite(stampMs)? stampMs : null, st:{}};
     stations.forEach(s => { if (s.hasReading) snap.st[s.station] = [s.mm, s.rating] });
     buf.push(snap);
   }
@@ -524,7 +562,7 @@ function stationChart(buf, station){
       <text x="${padL}" y="${H-6}" font-size="9" fill="#898781">${fmt(t0)}</text>
       <text x="${W-padR}" y="${H-6}" text-anchor="end" font-size="9" fill="#898781">${fmt(t1)} MT</text>
     </svg>
-    <div style="color:#898781;font-size:10.5px">24h total, mm — session data: ${pts.length} readings over ${mins} min (not official history)</div>
+    <div style="color:#898781;font-size:10.5px">24h total, mm — session data: ${pts.length} samples over ${mins} min (not official history)</div>
   </div>`;
 }
 function sparkline(buf, station){
@@ -754,8 +792,8 @@ function render(rows){
     `<tr><td colspan="6" style="color:var(--ink-muted);padding:14px">No station matches the current filters.</td></tr>`);
   const snaps = buf.length, span = snaps>1? Math.round((buf[buf.length-1].t-buf[0].t)/60000):0;
   document.getElementById("trendNote").textContent = (snaps<2?
-    "Trend appears once the feed publishes a second batch (~15 min cadence) — leave this page open." :
-    `Session trend: ${snaps} feed publishes over ${span} min (this browser only — not official history).`) +
+    "Trend builds from 10-min samples + feed publishes — leave this page open; a full 24h line accumulates over a day." :
+    `Session trend: ${snaps} samples over ${span} min, sampled every 10 min + on each feed publish (this browser only — not official history).`) +
     (persistOK? "" : " ⚠ Browser storage unavailable — trend lives in this tab only and will not survive a reload.");
 
   // map

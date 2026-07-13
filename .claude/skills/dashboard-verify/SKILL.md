@@ -26,13 +26,15 @@ against the source independently.
    ```
 3. **Freshness stamp** — page's "Data as of" equals newest `:updated_at`
    (`$$exclude_system_fields=false`) converted to America/Edmonton.
-4. **Trend buffer** — key `edm_rain_buffer_v2`, shape `[{t:<ms>, st:{RG17:[mm,rating],…}}]`.
-   `t` is the FEED PUBLISH time (batch `:updated_at`), and `pushBuf` only appends when the
-   stamp advances — page refreshes between publishes must NOT add points (that regression
-   showed every station as "steady +0.0 mm/5m"). Inject a synthetic point dated ~40 min
-   before the current one with offset totals, `memBuf=null; load()`, confirm rising/falling
-   arrows, sparklines, and a "N feed publishes over X min" note. **Remove the synthetic
-   snapshot afterwards** — it poisons real trends.
+4. **Trend buffer** — key `edm_rain_buffer_v3`, shape `[{t:<ms>, stamp:<ms|null>,
+   st:{RG17:[mm,rating],…}}]`. Hybrid sampling: a point when the batch `:updated_at`
+   advances PLUS a steady point every ≥10 min (`t` = sample wall-clock) — so a 24h
+   time-true line accumulates while the page stays open. Page refreshes inside the 10-min
+   window must NOT add points (the old per-refresh regression showed everything as
+   "steady +0.0 mm/5m"; flat segments during quiet feeds are correct and expected).
+   Inject a synthetic point dated ~40 min back with offset totals, `memBuf=null; load()`,
+   confirm rising/falling arrows, sparklines, and the "N samples over X min" note.
+   **Remove the synthetic snapshot afterwards** — it poisons real trends.
 5. **Failure path** — stub `window.fetch` to reject, call `load()`, confirm the failbar shows
    "DATA UNAVAILABLE … do not assume no rain" and the stamp reads "feed unreachable". Restore
    fetch and reload.
@@ -60,6 +62,11 @@ against the source independently.
 8. **Filters** — Station / Rating / Feed-says selects filter the table rows AND gauge dots
    (selecting rating 5 must shrink both); ward fills and citywide KPIs must NOT change;
    Clear restores all rows; selections survive an auto-refresh.
+8b. **Live cameras (Alberta 511)** — enabling the layer shows 17 `▣` markers (Henday ring
+   road + approaches); a popup must load a real live PNG (`img.naturalWidth > 0`) from
+   `511.alberta.ca/map/Cctv/<id>` with view-switch buttons for multi-view sites. Camera
+   LOCATIONS are a baked constant (the list API blocks CORS — do not "fix" by fetching it
+   in-browser); only the images are live.
 9. **Weather overlays (ECCC GeoMet WMS)** — enabling "Weather radar (animated)" must show the
    radar control bar, populate ~31 frames from GetCapabilities (rolling ~3 h at 6-min steps —
    the service offers no 24 h loop; do not "fix" that), and play must advance the MT time label
