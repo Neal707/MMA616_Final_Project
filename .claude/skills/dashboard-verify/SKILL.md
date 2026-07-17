@@ -167,12 +167,80 @@ against the source independently.
    boundary polygons; there are no `#mapMetricSel`/`#densityBoundarySel` selects anymore.
    The Tracking (rain/snow) header select remains a dropdown and must still swap the 311
    layer label without errors (the ECCC radar-product swap inside `setTrackMode` is gone).
-8c. **Next-24h forecast column + PRE-INSPECT (2026-07-14)** — the table's 5th column is the
-   per-station next-24h precipitation forecast (`stationFcCell`, amber mm bar), fed by ONE
-   batched Open-Meteo multi-point call (`loadStationFc`, all 23 coords comma-separated,
-   30-min cache), sortable via `data-k="fc"` (numeric, desc-first). It REPLACED the in-table
-   session sparkline (removed; the session line chart still lives in each gauge's dot
-   popup — don't re-add a sparkline column). "Storm ponds (SWM facilities)" is a default-off
+8c. **±12h precipitation column + PRE-INSPECT (2026-07-14; ±12h line chart 2026-07-16)** —
+   the table's 5th column ("Rain ±12 h (model, mm/h)", `stationFcCell`) is a mini SVG line
+   chart spanning PAST 12 h → now → NEXT 12 h per gauge (Open-Meteo
+   `past_hours=12&forecast_hours=12`, exactly 24 hourly points), with a labelled time AXIS
+   ("-12h · now · +12h") and a dashed vertical "now" divider. Past half = gray polyline
+   (model estimate, NOT gauge history — the gauge ground truth stays in the 24h rain
+   column); future half = amber; the coming (future-side) peak gets a red dot +
+   "2.3@1a.m." label whose text-anchor flips near the edges. NO mm total anywhere (removed
+   from the cell AND the hover title at user request — title carries only the color coding
+   + coming peak). Dry rows (< .05 max) render a flat baseline "dry ±12 h" but keep the
+   axis. All rows share one y-scale (`stationFcHMax`); sorting via `data-k="fc"` uses the
+   NEXT-12H sum. Fed by ONE batched multi-point call (`loadStationFc`, 30-min cache,
+   stores `stationFcH = {t, p, nowIdx}`). The session sparkline stays gone from the table
+   (still in each gauge's dot popup).
+8e. **Modal = metrics → mini map → 4 cams (2026-07-16; reordered 2026-07-17)** — clicking a
+   STATION code or a DISTRICT name in the table opens `#camModal` in this exact order (user
+   request): (1) `#miniMetrics`, area-scoped "metrics at a glance" — `.mm-cell` mini-KPIs
+   computed by `miniMetrics(district, station?)` from the SAME lists as the KPI tiles/crew
+   context (never independent queries): worst gauge in district (band color), 311 (14d),
+   road closures (+EMERGENCY red), EPCOR incidents (+no-water red), pump stations; station
+   clicks prepend "This gauge · 24h" (mm + band) and "Next 12h forecast" (from `stationFc`);
+   (2) the highlighted mini map; (3) the 4 nearest live cams (unchanged design).
+   `#miniMapWrap` holds a second Leaflet map (`miniMap`, lazily created once, layers
+   swapped per open via `miniMapLayers`) that mirrors map 1's severity view — CARTO light
+   basemap, district severity fill via the same `rampColor`/`muted` helpers, dark gauge
+   dots — with the designated district vivid + blue border and the rest faded; station
+   clicks also draw a blue ring around that gauge and district clicks `fitBounds` to the
+   district polygon. `renderMiniMap` must run AFTER the modal is displayed +
+   `invalidateSize` (it inits against a hidden container). This replaced the brief
+   "district → maps pane" behavior; the side tabs (§8d) remain but district links now open
+   this modal again.
+9c. **EPCOR water incidents = NATIVE layer on map 1 (2026-07-16; the earlier iframe panel
+   is REMOVED — no `#epcorFrame`, no `#epcorViewBtns`, don't reintroduce them)**. The
+   Experience app's item config turned out to be PUBLIC
+   (`arcgis.com/sharing/rest/content/items/a662ca8675ea4acfb3f5a630e0afb108/data?f=json`
+   — this is the discovery path, don't re-derive), exposing four production feature
+   services on `services6.arcgis.com/Ji2rusuWXDFSqNsP/arcgis/rest/services/…/FeatureServer/0`,
+   all CORS `*` and `f=geojson` (WGS84):
+   `EPCor_Water_Outages_Prod` (Status regex → color: /may be out of water/i RED,
+   /repaired/i GREEN, else YELLOW), `Water_InfrastructureProjects_Prod` (orange triangle),
+   `UDF_Events_Prod` (purple hexagon = main flushing), `GenericWaterEvents_Prod` (⚠).
+   `loadEpcor()` fetches all four in parallel (individual failures tolerated; full failure →
+   tile "feed unreachable"), throttled ~5 min, re-invoked each `load()` cycle; markers are
+   divIcons matching the `#epcorLegend` chips exactly; `epcorList` feeds the district filter
+   (`applyContextFilter`) and `crewContext` ("N EPCOR incident(s) (n no-water)").
+   - **`#epcorLegend`** now lives under map 1's layer panel, shown ONLY while `epcorLayer`
+     is on (overlayadd/remove hooks, like the old lightning note). Chip wordings are EPCOR's
+     official legend (full sentence in hover titles) — do NOT invent new wordings.
+   - **KPI tile** ("EPCOR water incidents", `#kpiEpcor`): value = active outage count (red
+     when any no-water), `.n` = e.g. "2 no water · 3 responding · 10 restoring · 10
+     construction · 20 flushing · 2 other" (zero categories omitted; "none reported" empty
+     state). Every count is derived from `epcorList` — the GEOCODED features actually drawn —
+     so the tile and the map markers are always equal (verify: tile category sum == marker
+     count, e.g. 2+3+10+10+20+2 = 47). Cross-check against source: each service's
+     `query?where=1=1&returnCountOnly=true&f=json` is the RAW feed count (15/10/21/3) and can
+     be ≥ the tile/markers, because rows with null geometry are correctly skipped from both
+     (e.g. flushing 21 raw → 20 on the map; generic 3 raw → 2). Outage split by Status regex:
+     /may be out of water/→red, /repaired/→green, else yellow.
+   - The map helpnote keeps the operational read (red circles = the storm signal;
+     triangles/hexagons = planned work that can mask or mimic storm impact) and the
+     SCADA-gap sentence + SIRP/outage-page links — pipe-level flow and pond levels are
+     EPCOR-internal SCADA, published nowhere; these invariants moved here from the deleted
+     panel and must stay.
+8d. **Side tabs: table primary, maps behind a vertical tab (2026-07-16)** — the old
+   maps-beside-table flex row is gone. `.sidewrap` = a vertical tab strip (`.sidetabs`,
+   writing-mode buttons "📋 Station table" / "🗺 Maps") + `.sidecontent` holding two panes:
+   `#sideTable` (ACTIVE by default — the station table is the primary view, full width) and
+   `#sideMaps` (drainage map panel + Windy panel stacked). `showSidePane("maps")` must call
+   `map.invalidateSize()` after reveal — Leaflet inits against the hidden 0-size container
+   (verified: 984×520 after reveal). Clicking a DISTRICT name in the table now switches to
+   the Maps pane, selects/highlights that district (same `toggleDistrictSelection` path:
+   vivid + blue border, rest muted, table/heatmap filter follows) and scrolls the map into
+   view — it no longer opens the live-cam modal (user request; cams remain via station-code
+   links and the camera map layer). "Storm ponds (SWM facilities)" is a default-off
    layer (`72ee-mmkx`, 370 teal centroid markers; static inventory — NO real-time pond/sewer
    capacity feed exists on the open portal, that's EPCOR-internal SCADA; the popup says so).
    When `loadForecast` sets `fcExtreme`, the priorities list gains a PRE-INSPECT item
@@ -246,8 +314,12 @@ against the source independently.
    that difference is documented in `#wardNoteDensity`, don't "fix" it. `#mapMetricSel` toggles
    `mapMode` severity ⇄ density; density reveals `#densityControls` (period + boundary selects +
    gradient legend) and swaps the note (`#wardNoteSeverity` ⇄ `#wardNoteDensity`).
-   - **Period** — a `#densityPresetSel` dropdown (Past week / month / 3 months / year (default) /
-     2 years / All available since Jan 2023 / Custom range) for one-click selection, PLUS the
+   - **Period** — a `#densityPresetSel` dropdown (Today / Past week / month / 3 months /
+     year (default) / 2 years / All available since Jan 2023 / Custom range) for one-click
+     selection — "Today" (added 2026-07-17) maps to `DENSITY_PRESETS.today = 0` days back, so
+     from = to = `todayLocalDate()`; a 1-day span the existing `densityDays()` floor already
+     handles, and an honest 0-count when today's 311 batch hasn't published yet (verified
+     against SoQL) — PLUS the
      free `#densityFrom`/`#densityTo` `<input type=date>` pair for anything else — both exist
      together, neither replaced the other. Picking a preset calls `applyDensityPreset(key)`,
      which computes From/To from `todayLocalDate()` and writes both inputs; editing From or To

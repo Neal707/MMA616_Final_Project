@@ -108,6 +108,22 @@
   .density-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-muted)}
   .density-legend .bar{width:90px;height:10px;border-radius:3px;border:1px solid var(--ring)}
   .density-total{font-size:13px;color:var(--ink-1);padding:0 0 8px}
+  /* EPCOR outage-map legend: dashboard-native chips decoding EPCOR's marker symbols */
+  .epcor-legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;
+    padding:8px 14px 4px;font-size:11.5px;color:var(--ink-1)}
+  .epcor-legend .chip{display:inline-flex;align-items:center;gap:5px;cursor:default}
+  .epcor-legend .sw{display:inline-block;width:11px;height:11px;flex:0 0 auto}
+  .epcor-legend .sw.circ{border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--ring)}
+  .epcor-legend .sw.tri{width:0;height:0;border-left:6.5px solid transparent;
+    border-right:6.5px solid transparent;border-bottom:11px solid #e07b00}
+  .epcor-legend .sw.hex{background:#7d4bbd;border-radius:3px;transform:rotate(45deg);
+    width:10px;height:10px}
+  /* modal "metrics at a glance": area-scoped mini KPI cells above the map + cams */
+  .mm-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-top:10px}
+  .mm-cell{background:var(--page);border:1px solid var(--ring);border-radius:8px;padding:6px 10px}
+  .mm-k{font-size:10.5px;color:var(--ink-muted);font-weight:650;text-transform:uppercase;letter-spacing:.03em}
+  .mm-v{font-size:15.5px;font-weight:700;margin-top:1px}
+  .mm-n{font-size:10.5px;color:var(--ink-2)}
   .radarctl{display:none;flex-direction:column;gap:6px;padding:10px 14px 8px;font-size:12px;color:var(--ink-2);
     border-top:1px solid var(--grid)}
   .radarctl-row{display:flex;gap:10px;align-items:center}
@@ -134,6 +150,18 @@
     padding:2px 0;list-style-position:inside}
   .helpnote summary:hover{color:var(--ink-1)}
   .helpnote .note{padding:6px 0 0}
+  /* side tabs: the station table is the primary view; both maps live in a side pane,
+     reached by the vertical tab strip (or by clicking a district in the table) */
+  .sidewrap{display:flex;gap:10px;align-items:stretch}
+  .sidetabs{display:flex;flex-direction:column;gap:8px;flex:0 0 36px}
+  .sidetabs button{writing-mode:vertical-rl;padding:16px 8px;font-size:13px;font-weight:650;
+    border:1px solid var(--ring);border-radius:8px;background:var(--surface-1);
+    color:var(--ink-2);cursor:pointer;letter-spacing:.03em}
+  .sidetabs button.active{background:var(--seq-450);color:#fff;border-color:var(--seq-450)}
+  .sidecontent{flex:1;min-width:0}
+  .sidepane{display:none}
+  .sidepane.active{display:block}
+  .sidepane > .panel + .panel{margin-top:14px}
   ol.prio{margin:0;padding:2px 14px 12px 30px;font-size:13.5px}
   ol.prio li{margin:6px 0;padding:6px 10px;border-left:4px solid var(--grid);
     background:var(--page);border-radius:0 7px 7px 0}
@@ -258,6 +286,7 @@
     <div class="tile"><div class="k" id="kpiFloodK">311 flood reports (14 d)</div><div class="v" id="kpiFlood">–</div><div class="n" id="kpiFloodN">loading…</div></div>
     <div class="tile"><div class="k">Pump stations to check</div><div class="v" id="kpiPumps">–</div><div class="n" id="kpiPumpsN"></div></div>
     <div class="tile"><div class="k">Road closures</div><div class="v" id="kpiClosures">–</div><div class="n" id="kpiClosuresN"></div></div>
+    <div class="tile"><div class="k">EPCOR water incidents</div><div class="v" id="kpiEpcor">–</div><div class="n" id="kpiEpcorN">loading…</div></div>
   </div>
 </div>
 
@@ -332,8 +361,13 @@
    <div class="hmwrap"><div id="hmGrid" class="hmgrid"></div></div>
    <div class="note" id="hmStatus">loading heatmap…</div>
  </div>
- <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
-  <div style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:14px">
+ <div class="sidewrap">
+  <div class="sidetabs">
+    <button id="sideBtnTable" class="active" type="button">📋 Station table</button>
+    <button id="sideBtnMaps" type="button">🗺 Maps</button>
+  </div>
+  <div class="sidecontent">
+  <div id="sideMaps" class="sidepane">
   <div class="panel">
     <h2 id="mapH2">Where it is raining hardest</h2>
     <div class="mapmode-row">
@@ -349,6 +383,7 @@
       <span id="densityControls">
         <label>Quick range
           <select id="densityPresetSel">
+            <option value="today">Today</option>
             <option value="7d">Past week</option>
             <option value="30d">Past month</option>
             <option value="90d">Past 3 months</option>
@@ -407,12 +442,40 @@
       (city-wide or unaddressed service types) and can't be placed on this map — the fill shows
       only the geolocatable subset, not the full request volume. Click a ward/neighbourhood for
       its exact count.</div>
+    <div class="note"><b>EPCOR water incidents layer</b> — live from EPCOR's own outage feed
+      (the same data behind epcor.com's outage map, updated 24/7 by EPCOR staff).
+      <b>Operational read: the red circles are the storm signal</b> — mains down with crews
+      committed; triangles and hexagons are PLANNED work (construction / flushing) that can
+      mask or mimic storm impact — check them before attributing ponding or low pressure to
+      weather. <b>Pipe-level flow and pond water levels are EPCOR-internal SCADA and are not
+      published anywhere</b>, so during a storm the operational reads are: this layer, the
+      road-closure layer, and the 311 flood reports. Historical engineering stats — pond peak
+      levels, combined-sewer overflow counts — are published only in EPCOR's annual
+      <a href="https://www.epcor.com/ca/en/ab/edmonton/about-epcor/water-services/stormwater-integrated-resource-plan.html"
+         target="_blank" rel="noopener" style="color:var(--seq-450)">Stormwater Integrated
+      Resource Plan (SIRP)</a> reports (PDF, yearly — not a live feed). Cross-check against the
+      <a href="https://www.epcor.com/ca/en/ab/edmonton/outages/current/water-outages-alerts.html"
+         target="_blank" rel="noopener" style="color:var(--seq-450)">EPCOR water outage page</a>.</div>
     </details>
     <div style="display:flex;flex-wrap:wrap;gap:0">
       <div id="map" style="flex:1 1 340px;min-width:0"></div>
       <div class="layerpanel" id="layerPanel">
         <div class="lp-title">Map layers</div>
       </div>
+    </div>
+    <div class="epcor-legend" id="epcorLegend" style="border-top:1px solid var(--grid)">
+      <b style="font-size:11px">EPCOR:</b>
+      <span class="chip" title="Customers may have no water. Crews are responding.">
+        <span class="sw circ" style="background:#d03b3b"></span>no water — crews responding</span>
+      <span class="chip" title="Customers have water. Crews are responding.">
+        <span class="sw circ" style="background:#e8b60c"></span>water on — crews responding</span>
+      <span class="chip" title="Water main break repaired. Awaiting surface restoration.">
+        <span class="sw circ" style="background:#2f9e44"></span>repaired, awaiting restoration</span>
+      <span class="chip" title="Water construction project. Possible water or road impact.">
+        <span class="sw tri"></span>construction</span>
+      <span class="chip" title="Water main flushing. Possible low water pressure.">
+        <span class="sw hex"></span>main flushing</span>
+      <span class="chip" title="Other customer impact.">⚠ other impact</span>
     </div>
   </div>
   <div class="panel">
@@ -443,7 +506,8 @@
     </div>
   </div>
   </div>
-  <div class="panel" style="flex:1.15 1 520px;min-width:0">
+  <div id="sideTable" class="sidepane active">
+  <div class="panel">
     <h2>Stations ranked by severity</h2>
     <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
     <div style="overflow-x:auto">
@@ -453,13 +517,16 @@
         <th data-k="district" style="width:110px">District</th>
         <th style="width:96px">311 · closures</th>
         <th class="num" data-k="mm" style="width:118px">24h rain (mm)</th>
-        <th class="num" data-k="fc" style="width:118px">Next 24h forecast (mm)</th>
+        <th class="num" data-k="fc" style="width:132px"
+          title="model precipitation per hour — past 12 h in gray, next 12 h in amber, coming peak marked; sorts by the next-12h sum">Rain ±12 h (model, mm/h)</th>
         <th data-k="rating" style="width:150px">Rating · action now</th>
         <th data-k="says">Feed says</th>
       </tr></thead>
       <tbody></tbody>
     </table>
     </div>
+  </div>
+  </div>
   </div>
  </div>
 </div>
@@ -474,6 +541,12 @@
   <div class="box">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <b id="camModalTitle"></b><button id="camModalClose" type="button">✕ close</button>
+    </div>
+    <!-- order (user request): metrics at a glance → highlighted map → live cams -->
+    <div id="miniMetrics" class="mm-row"></div>
+    <div id="miniMapWrap" style="margin-top:12px;display:none">
+      <div id="miniMapCap" style="font-size:12px;font-weight:650;margin-bottom:4px"></div>
+      <div id="miniMap" style="height:300px;border-radius:8px;background:var(--grid)"></div>
     </div>
     <div id="camModalGrid"></div>
     <div style="color:var(--ink-muted);font-size:11px;margin-top:8px">Live video — City of Edmonton
@@ -507,8 +580,8 @@ const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
 const fmtMm = v => v.toFixed(1)+" mm";
 
 let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, cameraLayer=null,
-    flood311Layer=null, pondLayer=null, timer=null;
-let closuresList = [], flood311List = []; // for the district crew-context card
+    flood311Layer=null, pondLayer=null, epcorLayer=null, timer=null;
+let closuresList = [], flood311List = [], epcorList = []; // for the district crew-context card
 
 // City of Edmonton traffic cameras (edmontontrafficcam.com — a City of Edmonton web app;
 // note the coe logos + coewebapps.edmonton.ca assets). The camera LIST endpoint
@@ -553,7 +626,86 @@ function closeCamModal(){
   document.getElementById("camModalGrid").innerHTML = "";
   document.getElementById("camModal").style.display = "none";
 }
-async function openStationCams(station, lat, lon){
+// mini map inside the modal — SAME look as map 1's severity view (CARTO light basemap,
+// district severity fill, dark gauge dots), with the designated district vivid + blue-bordered
+// and everything else faded; lives under the cam grid and reuses map 1's style helpers so the
+// two can never drift apart visually
+let miniMap = null, miniMapLayers = [];
+function renderMiniMap(district, pt){
+  const wrap = document.getElementById("miniMapWrap");
+  if (!districtFeats.length){ wrap.style.display = "none"; return; }
+  wrap.style.display = "block";
+  const d = (district||"").replace(/^near /,"");
+  document.getElementById("miniMapCap").textContent =
+    d? `${d} highlighted — same view as the drainage map` : "drainage map view";
+  if (!miniMap){
+    miniMap = L.map("miniMap", {attributionControl:false});
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(miniMap);
+  }
+  miniMapLayers.forEach(l=>miniMap.removeLayer(l)); miniMapLayers = [];
+  const target = districtFeats.find(f=>f.properties.name===d);
+  const geo = L.geoJSON({type:"FeatureCollection", features:districtFeats}, {
+    style: f => { // severity fill like map 1, with a modal-local highlight override
+      const inD = districtStations(f.properties.name).filter(s=>s.hasReading);
+      const worst = inD.length? Math.max(...inD.map(s=>s.rating)) : null;
+      const base = {color:"#898781", weight:1, fillOpacity:.55,
+        fillColor: worst===null? NO_GAUGE_FILL : rampColor(worst)};
+      return f.properties.name===d? {...base, color:"#2a78d6", weight:2.5} : muted(base);
+    }
+  }).addTo(miniMap);
+  miniMapLayers.push(geo);
+  lastStations.filter(s=>s.lat!=null).forEach(s=>{ // gauge dots, map-1 design
+    const m = L.circleMarker([s.lat,s.lon],
+      {radius:5, color:"#fff", weight:1.5, fillColor:"#1a1a19", fillOpacity:.9});
+    m.bindTooltip(`${s.station}${s.hasReading? " · "+s.mm.toFixed(1)+" mm" : ""}`);
+    m.addTo(miniMap); miniMapLayers.push(m);
+  });
+  if (pt){ // station click: ring the gauge in question
+    const mk = L.circleMarker(pt, {radius:9, color:"#2a78d6", weight:3, fillOpacity:0});
+    mk.addTo(miniMap); miniMapLayers.push(mk);
+  }
+  setTimeout(()=>{ // the modal was display:none a tick ago — re-measure, then frame the area
+    miniMap.invalidateSize();
+    if (target) miniMap.fitBounds(L.geoJSON(target).getBounds(), {padding:[12,12]});
+    else if (pt) miniMap.setView(pt, 12);
+  }, 40);
+}
+// area-scoped "metrics at a glance" for the modal: the top-section signals recomputed for
+// ONE district (and, on station clicks, that gauge's own reading + coming forecast) — same
+// source lists as the KPI tiles/crew context, so the numbers can never disagree with them
+function miniMetrics(district, stationCode){
+  const d = (district||"").replace(/^near /,"");
+  if (!d) return "";
+  const cell = (k,v,n,color) => `<div class="mm-cell"><div class="mm-k">${k}</div>
+    <div class="mm-v"${color? ` style="color:${color}"`:""}>${v}</div>${n? `<div class="mm-n">${n}</div>`:""}</div>`;
+  const cells = [];
+  const st = stationCode? lastStations.find(s=>s.station===stationCode) : null;
+  if (st && st.hasReading){
+    const b = bandOf(st.rating);
+    cells.push(cell("This gauge · 24h", fmtMm(st.mm), `rating ${st.rating} ${b.name}`, b.color));
+    const fc = stationFc[st.station];
+    if (fc!=null) cells.push(cell("Next 12h forecast", fc<.05? "dry" : fc.toFixed(1)+" mm", "model"));
+  } else if (st) cells.push(cell("This gauge", "⚠ no reading", "blind spot, not calm", "var(--band-5)"));
+  const sts = districtStations(d).filter(s=>s.hasReading);
+  if (sts.length){
+    const worst = sts.reduce((a,s)=> (s.rating>a.rating || (s.rating===a.rating && s.mm>a.mm))? s : a);
+    const b = bandOf(worst.rating);
+    cells.push(cell("Worst gauge in district", fmtMm(worst.mm), `${worst.station} · ${b.name}`, b.color));
+  } else cells.push(cell("Gauges in district", "none", "no visibility here"));
+  if (flood311List.length){ assignDistrict(flood311List);
+    const n = flood311List.filter(f=>f.district===d).reduce((a,f)=>a+f.n,0);
+    cells.push(cell(`311 ${trackCfg().label311} (14d)`, n, "", n? "var(--band-3)":"")); }
+  if (closuresList.length){ assignDistrict(closuresList);
+    const cl = closuresList.filter(c=>c.district===d), em = cl.filter(c=>c.emerg).length;
+    cells.push(cell("Road closures", cl.length, em? `${em} EMERGENCY`:"", em? "var(--band-5)":"")); }
+  if (epcorList.length){ assignDistrict(epcorList);
+    const inD = epcorList.filter(p=>p.district===d), red = inD.filter(p=>p.kind==="red").length;
+    cells.push(cell("EPCOR incidents", inD.length, red? `${red} no-water`:"", red? "var(--band-5)":"")); }
+  if (pumpsList){ assignDistrict(pumpsList);
+    cells.push(cell("Pump stations", pumpsList.filter(p=>p.district===d).length, "check during storms")); }
+  return cells.join("");
+}
+async function openStationCams(station, lat, lon, district){
   if (!Number.isFinite(lat)) return;
   const near = CAMERAS.map(c=>({c, d2:((c.lat-lat)*111)**2 + ((c.lon-lon)*66)**2}))
     .sort((a,b)=>a.d2-b.d2).slice(0,4);
@@ -565,6 +717,10 @@ async function openStationCams(station, lat, lon){
       <video id="stcam_${i}" muted autoplay playsinline controls></video>
     </div>`).join("");
   document.getElementById("camModal").style.display = "flex";
+  // modal order (user request): area metrics at a glance → highlighted mini map → live cams
+  document.getElementById("miniMetrics").innerHTML =
+    miniMetrics(district, /\(district\)$/.test(station)? null : station);
+  renderMiniMap(district, /\(district\)$/.test(station)? null : [lat,lon]);
   await ensureHls();
   near.forEach((n,i)=>{
     const v = document.getElementById("stcam_"+i); if (!v) return;
@@ -590,15 +746,31 @@ function districtRef(name){
 }
 document.getElementById("camModalClose").addEventListener("click", closeCamModal);
 document.getElementById("camModal").addEventListener("click", e=>{ if (e.target.id==="camModal") closeCamModal(); });
+// side panes: table is primary; both maps live behind the vertical side tab
+function showSidePane(which){
+  document.getElementById("sideTable").classList.toggle("active", which==="table");
+  document.getElementById("sideMaps").classList.toggle("active", which==="maps");
+  document.getElementById("sideBtnTable").classList.toggle("active", which==="table");
+  document.getElementById("sideBtnMaps").classList.toggle("active", which==="maps");
+  // Leaflet measured a hidden (0-size) container at init — re-measure when revealed
+  if (which==="maps") setTimeout(()=>{ if (map) map.invalidateSize(); }, 30);
+}
+document.getElementById("sideBtnTable").addEventListener("click", ()=>showSidePane("table"));
+document.getElementById("sideBtnMaps").addEventListener("click", ()=>showSidePane("maps"));
+// station AND district names both open the modal: 4 nearest live cams on top, mini map
+// (map-1 design, area highlighted) beneath
 document.querySelector("#tbl tbody").addEventListener("click", e=>{
   const d = e.target.closest("a.dstlink"); // check first: district links also carry .stlink styling
   if (d){ e.preventDefault();
     const ref = districtRef(d.dataset.d);
-    if (ref) openStationCams(`${d.dataset.d} (district)`, ref[0], ref[1]);
+    if (ref) openStationCams(`${d.dataset.d} (district)`, ref[0], ref[1], d.dataset.d);
     return;
   }
   const a = e.target.closest("a.stlink");
-  if (a){ e.preventDefault(); openStationCams(a.dataset.st, parseFloat(a.dataset.lat), parseFloat(a.dataset.lon)); }
+  if (a){ e.preventDefault();
+    const st = lastStations.find(s=>s.station===a.dataset.st);
+    openStationCams(a.dataset.st, parseFloat(a.dataset.lat), parseFloat(a.dataset.lon), st?.district);
+  }
 });
 
 function loadCameras(){
@@ -637,6 +809,8 @@ function initMap(){
   cameraLayer = L.layerGroup();
   flood311Layer = L.layerGroup().addTo(map); // default ON: sparse (~a dozen badges) and it is
                                              // the only between-gauges ground truth on the map
+  epcorLayer = L.layerGroup().addTo(map);    // default ON (user request): EPCOR's live network
+                                             // incidents are the sewer-telemetry stand-in
   // (regional weather view is the Windy.com embed below the map — the in-app ECCC WMS
   //  map was removed 2026-07-13 at user request; Windy's timeline covers forecast animation)
   // layer toggles live in a constant side panel (#layerPanel), not on the map canvas —
@@ -657,6 +831,8 @@ function initMap(){
       ic(`<span style="width:14px;height:14px;border-radius:50%;background:#eda100;color:#fff;font:700 10px/14px system-ui;text-align:center">!</span>`)],
     [trackCfg().layerLabel, flood311Layer,  true,
       ic(`<span style="width:14px;height:14px;border-radius:50%;background:#b56a00;color:#fff;font:700 9.5px/14px system-ui;text-align:center">F</span>`)],
+    ["EPCOR water incidents (live)", epcorLayer, true,
+      ic(`<span style="width:13px;height:13px;border-radius:50%;background:#d03b3b;border:2px solid #fff;box-shadow:0 0 0 1px var(--ring)"></span>`)],
     ["Live traffic cameras (CoE)", cameraLayer, false,
       ic(`<span style="width:16px;height:13px;border-radius:3px;background:#3a3935;color:#fff;font:700 9px/12px system-ui;text-align:center">▣</span>`)]
   ];
@@ -690,6 +866,9 @@ function initMap(){
   }
   // markers added while a layer was hidden get fresh DOM on toggle-on — re-apply the filter
   map.on("overlayadd", ()=>setTimeout(applyContextFilter, 0));
+  // the EPCOR symbol legend only makes sense while its layer is visible
+  map.on("overlayadd",   e=>{ if (e.layer===epcorLayer) document.getElementById("epcorLegend").style.display="flex"; });
+  map.on("overlayremove",e=>{ if (e.layer===epcorLayer) document.getElementById("epcorLegend").style.display="none"; });
   // clicking the basemap / outside the city clears any area selection (polygon clicks
   // stopPropagation, so this only fires on genuinely empty ground)
   map.on("click", ()=>{
@@ -702,6 +881,7 @@ function initMap(){
   loadPonds();
   loadWards();
   loadFlood311();
+  loadEpcor();
 }
 // ---------- seasonal tracking mode ----------
 // Rain (May–Oct) vs Snow (Nov–Apr): switches the ECCC radar product, the Open-Meteo
@@ -777,6 +957,83 @@ async function loadFlood311(){
     applyContextFilter();
     rerender(); // table's "311 · closures" column reads flood311List
   }catch(e){ console.warn("311 layer unavailable", e); }
+}
+
+// ---------- EPCOR water incidents (native layer, merged from the old iframe panel) ----------
+// The Experience app's item config is public, exposing its production feature services
+// (services6.arcgis.com/Ji2rusuWXDFSqNsP, CORS *, f=geojson). Same data as epcor.com's
+// outage map, drawn in OUR symbols (the .epcor-legend chips) on the drainage map itself.
+const EPCOR_BASE = "https://services6.arcgis.com/Ji2rusuWXDFSqNsP/arcgis/rest/services";
+const epcorQ = svc => fetch(`${EPCOR_BASE}/${svc}/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson`)
+  .then(r=>r.json()).then(d=>d.features||[]).catch(()=>null); // null = that feed failed
+let epcorAt = 0;
+const epcorEsc = s => String(s??"").replace(/[<>&"]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+function epcorIcon(kind){ // mirrors the .epcor-legend swatches exactly
+  const circ = c => `<div style="width:14px;height:14px;border-radius:50%;background:${c};
+    border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>`;
+  const html = {
+    red:    circ("#d03b3b"), yellow: circ("#e8b60c"), green: circ("#2f9e44"),
+    tri:    `<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;
+             border-bottom:14px solid #e07b00;filter:drop-shadow(0 0 1px #fff)"></div>`,
+    hex:    `<div style="width:12px;height:12px;background:#7d4bbd;border:1.5px solid #fff;
+             border-radius:3px;transform:rotate(45deg);box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>`,
+    warn:   `<div style="font:700 13px/14px system-ui;color:#e8b60c;text-shadow:0 0 2px #fff">⚠</div>`
+  }[kind];
+  return L.divIcon({className:"", html, iconSize:[16,16], iconAnchor:[8,8]});
+}
+async function loadEpcor(){
+  if (!epcorLayer || Date.now()-epcorAt < 5*60*1000) return; // EPCOR's cadence, not ours
+  epcorAt = Date.now();
+  const src = "Source: EPCOR live outage feed — same data as epcor.com's outage map.";
+  const [out, con, udf, gen] = await Promise.all([
+    epcorQ("EPCor_Water_Outages_Prod"), epcorQ("Water_InfrastructureProjects_Prod"),
+    epcorQ("UDF_Events_Prod"), epcorQ("GenericWaterEvents_Prod")]);
+  const kv = document.getElementById("kpiEpcor"), kn = document.getElementById("kpiEpcorN");
+  if (!out && !con && !udf && !gen){ kv.textContent="–"; kn.textContent="feed unreachable"; return; }
+  epcorLayer.clearLayers(); epcorList = [];
+  const add = (f, kind, html) => {
+    const [lon, lat] = f.geometry?.coordinates || [];
+    if (lat==null) return;
+    const m = L.marker([lat,lon], {icon: epcorIcon(kind)});
+    m.bindPopup(`${html}<br><span style="color:#898781;font-size:10.5px">${src}</span>`, {maxWidth:300});
+    epcorLayer.addLayer(m);
+    epcorList.push({lat, lon, kind});
+  };
+  let nRed=0, nYellow=0, nGreen=0;
+  (out||[]).forEach(f=>{
+    const a = f.properties, s = a.Status||"";
+    const kind = /may be out of water/i.test(s)? (nRed++, "red")
+               : /repaired/i.test(s)? (nGreen++, "green") : (nYellow++, "yellow");
+    add(f, kind, `<b>${epcorEsc(a.Cause||"Water outage")}</b><br>${epcorEsc(s)}
+      ${a.Details? `<br><span style="font-size:11px">${epcorEsc(a.Details)}</span>`:""}
+      <br>Reported: ${epcorEsc(a.ReportDate||"?")} · Est. restored: ${epcorEsc(a.EstimateRe||"—")}`);
+  });
+  (con||[]).forEach(f=>{ const a=f.properties;
+    add(f, "tri", `<b>Construction: ${epcorEsc(a.PR_NAME||a.PR_TYPE||"water project")}</b>
+      <br>${epcorEsc(a.PR_TYPE||"")} · ${epcorEsc(a.PR_STATUS||"")}<br>Possible water or road impact.`); });
+  (udf||[]).forEach(f=>{ const a=f.properties;
+    add(f, "hex", `<b>Water main flushing</b> (${epcorEsc(a.UDFID||"scheduled")})
+      <br>Possible low water pressure.<br>${epcorEsc(a.SCHD_START||"")} → ${epcorEsc(a.SCHD_END||"")}`); });
+  (gen||[]).forEach(f=>{ const a=f.properties;
+    add(f, "warn", `<b>${epcorEsc(a.Event||a.EventType||"Water event")}</b>
+      <br>${epcorEsc(a.Description||"Other customer impact.")}
+      ${a.Location? `<br>${epcorEsc(a.Location)}`:""}`); });
+  // KPI tile — derive every count from epcorList (the GEOCODED features actually on the map),
+  // not the raw feed arrays, so the tile and the map markers can never disagree (some UDF /
+  // generic rows have null geometry and are correctly absent from both)
+  const kc = k => epcorList.filter(p=>p.kind===k).length;
+  const active = kc("red")+kc("yellow")+kc("green");
+  kv.textContent = active;
+  kv.style.color = kc("red")? "var(--band-5)" : "";
+  const bits = [];
+  if (kc("red"))    bits.push(`${kc("red")} no water`);
+  if (kc("yellow")) bits.push(`${kc("yellow")} responding`);
+  if (kc("green"))  bits.push(`${kc("green")} restoring`);
+  if (kc("tri"))    bits.push(`${kc("tri")} construction`);
+  if (kc("hex"))    bits.push(`${kc("hex")} flushing`);
+  if (kc("warn"))   bits.push(`${kc("warn")} other`);
+  kn.textContent = bits.length? bits.join(" · ") : "none reported";
+  applyContextFilter();
 }
 
 // (ECCC GeoMet radar/alerts/lightning map + its animation engine removed 2026-07-13 at
@@ -1055,8 +1312,8 @@ function densityRangeLabel(){
   const fmt = s => new Date(s+"T00:00:00").toLocaleDateString("en-CA", {month:"short", day:"numeric", year:"numeric"});
   return `${fmt(densityFrom)} – ${fmt(densityTo)}`;
 }
-// Quick range → From/To: days-back presets, or null for "all available since Jan 2023"
-const DENSITY_PRESETS = {"7d":7, "30d":30, "90d":90, "365d":365, "730d":730, "all":null};
+// Quick range → From/To: 0 = today only, days-back presets, null = "all available since Jan 2023"
+const DENSITY_PRESETS = {"today":0, "7d":7, "30d":30, "90d":90, "365d":365, "730d":730, "all":null};
 function applyDensityPreset(key){
   const today = todayLocalDate();
   let from;
@@ -1348,6 +1605,10 @@ function crewContext(name){
     bits.push(`${pumpsList.filter(p=>p.district===name).length} pump station(s)`); }
   if (pondsList){ assignDistrict(pondsList);
     bits.push(`${pondsList.filter(p=>p.district===name).length} storm pond(s)`); }
+  if (epcorList.length){ assignDistrict(epcorList);
+    const inD = epcorList.filter(p=>p.district===name);
+    const red = inD.filter(p=>p.kind==="red").length;
+    if (inD.length) bits.push(`<b style="color:#b53a3a">${inD.length} EPCOR incident(s)${red? ` (${red} no-water)`:""}</b>`); }
   if (closuresList.length){ assignDistrict(closuresList);
     const cl = closuresList.filter(c=>c.district===name), em = cl.filter(c=>c.emerg).length;
     bits.push(`${cl.length} closure(s)${em? ` (<b style="color:#d03b3b">${em} EMERGENCY</b>)`:""}`); }
@@ -1922,7 +2183,7 @@ function render(rows){
 // via CSS so toggling layers/filters never rebuilds the layer data
 function applyContextFilter(){
   const d = filterValues().district;
-  [pumpLayer, closureLayer, cameraLayer, flood311Layer].forEach(layer=>{
+  [pumpLayer, closureLayer, cameraLayer, flood311Layer, epcorLayer].forEach(layer=>{
     if (!layer) return;
     layer.eachLayer(m=>{
       if (m._district===undefined){
@@ -1942,11 +2203,45 @@ function applyContextFilter(){
 // Open-Meteo accepts comma-separated coordinate lists — cached 30 min. Model forecast;
 // gauges remain ground truth. The per-station 24h session line still lives in the dot popup.
 let stationFc = {}, stationFcMax = 1, stationFcAt = 0;
+let stationFcH = {}, stationFcHMax = .1; // hourly series per station + global hourly max (shared y-scale)
 let fcExtreme = false; // set by loadForecast; drives the PRE-INSPECT priority
+// mini line chart spanning PAST 12 h → now → NEXT 12 h (user request), with a labelled time
+// axis ("-12h · now · +12h"), a dashed "now" divider, and the coming peak annotated. The past
+// half is Open-Meteo's model estimate (gray) — context for whether rain is arriving or leaving —
+// NOT gauge history; the gauge ground truth stays in the 24h rain column. No mm total shown
+// (removed at user request); rows still sort by the next-12h sum. One shared y-scale.
 function stationFcCell(st){
-  const v = stationFc[st];
-  if (v==null) return `<span style="color:var(--ink-muted)">…</span>`;
-  return `<span class="mmbar" style="width:${(v/stationFcMax*36).toFixed(0)}px;background:var(--band-3)"></span>${v.toFixed(1)}`;
+  const h = stationFcH[st];
+  if (!h) return `<span style="color:var(--ink-muted)">…</span>`;
+  const W = 116, Hh = 46, base = Hh-16, top = 6, n = h.p.length;
+  const nowX = (h.nowIdx/(n-1))*W;
+  const axis = `<line x1="${nowX.toFixed(1)}" y1="${top-2}" x2="${nowX.toFixed(1)}" y2="${base}"
+      stroke="var(--baseline)" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="0" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)">-12h</text>
+    <text x="${nowX.toFixed(1)}" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)" text-anchor="middle">now</text>
+    <text x="${W}" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)" text-anchor="end">+12h</text>`;
+  const future = h.p.slice(h.nowIdx);
+  if (Math.max(...h.p) < .05)
+    return `<span title="no meaningful precipitation at this gauge — past 12 h (model) or next 12 h">
+      <svg width="${W}" height="${Hh}" style="vertical-align:middle">
+      <line x1="0" y1="${base}" x2="${W}" y2="${base}" stroke="var(--grid)" stroke-width="1.5"/>${axis}
+      <text x="2" y="12" font-size="9.5" fill="var(--ink-muted)">dry ±12 h</text></svg></span>`;
+  const y = v => base - (v/stationFcHMax)*(base-top-6);
+  const x = i => (i/(n-1))*W;
+  const seg = (from,to) => h.p.slice(from,to+1).map((v,i)=>`${x(from+i).toFixed(1)},${y(v||0).toFixed(1)}`).join(" ");
+  const pkF = future.indexOf(Math.max(...future)), pk = h.nowIdx + pkF;
+  const px = x(pk), py = y(h.p[pk]);
+  const pkTime = new Date(h.t[pk]).toLocaleTimeString("en-CA",{hour:"numeric"}).replace(/\s/g,"").toLowerCase();
+  const peak = h.p[pk] >= .05?
+    `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.6" fill="var(--band-5)"/>
+     <text x="${px.toFixed(1)}" y="${Math.max(9, py-5).toFixed(1)}" font-size="9" font-weight="700"
+       text-anchor="${px > W*0.6? "end" : (px < W*0.25? "start" : "middle")}"
+       fill="var(--ink-1)">${h.p[pk].toFixed(1)}@${pkTime}</text>` : "";
+  return `<span title="model precipitation, past 12 h (gray) → next 12 h (amber)${h.p[pk]>=.05? ` · coming peak ${h.p[pk].toFixed(1)} mm/h around ${pkTime}`:""}">
+    <svg width="${W}" height="${Hh}" style="vertical-align:middle">${axis}
+    <polyline points="${seg(0, h.nowIdx)}" fill="none" stroke="var(--ink-muted)" stroke-width="1.5" opacity=".7"/>
+    <polyline points="${seg(h.nowIdx, n-1)}" fill="none" stroke="var(--band-3)" stroke-width="1.8"/>
+    ${peak}</svg></span>`;
 }
 async function loadStationFc(){
   if (Date.now()-stationFcAt < 30*60*1000 && Object.keys(stationFc).length) return;
@@ -1955,16 +2250,20 @@ async function loadStationFc(){
   try{
     const url = "https://api.open-meteo.com/v1/forecast?latitude=" + sts.map(s=>s.lat.toFixed(3)).join(",") +
       "&longitude=" + sts.map(s=>s.lon.toFixed(3)).join(",") +
-      "&hourly=precipitation&forecast_days=2&timezone=America%2FEdmonton";
+      "&hourly=precipitation&past_hours=12&forecast_hours=12&timezone=America%2FEdmonton";
     let res = await fetch(url).then(r=>r.json());
     if (!Array.isArray(res)) res = [res]; // single-point responses arrive unwrapped
-    stationFc = {};
+    stationFc = {}; stationFcH = {};
     res.forEach((r,i)=>{
       const H = r.hourly; if (!H) return;
-      const idx = Math.max(0, H.time.findIndex(t=>Date.parse(t)>=Date.now()));
-      stationFc[sts[i].station] = H.precipitation.slice(idx, idx+24).reduce((a,p)=>a+(p||0),0);
+      const p = H.precipitation.map(v=>v||0);
+      let nowIdx = H.time.findIndex(t=>Date.parse(t)>=Date.now());
+      if (nowIdx < 0) nowIdx = p.length-1;
+      stationFc[sts[i].station] = p.slice(nowIdx).reduce((a,v)=>a+v,0); // sort key: next-12h sum
+      stationFcH[sts[i].station] = {t: H.time, p, nowIdx};
     });
     stationFcMax = Math.max(1, ...Object.values(stationFc));
+    stationFcHMax = Math.max(.1, ...Object.values(stationFcH).flatMap(h=>h.p));
     stationFcAt = Date.now();
     rerender();
   }catch(e){ console.warn("per-station forecast unavailable", e); }
@@ -2055,6 +2354,7 @@ async function load(){
     if(!rows.length) throw new Error("empty response");
     render(rows);
     loadClosures(); // context layers refresh on the same cycle; failures are non-fatal
+    loadEpcor();    // internally throttled to EPCOR's ~5-min cadence
     loadForecast();
     loadStationFc();
     loadEccc();
