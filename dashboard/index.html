@@ -30,7 +30,7 @@
   h1{font-size:17px;margin:0;font-weight:650}
   .sub{color:var(--ink-2);font-size:12.5px;margin-top:2px}
   header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .stamp{color:var(--ink-2);font-size:12.5px;text-align:right}
+  .stamp{color:var(--ink-1);font-size:12.5px;text-align:left}
   .stamp b{color:var(--ink-1);font-weight:600}
   .stamp .stale{color:var(--band-5);font-weight:650}
   .stamp .quiet{color:var(--band-3);font-weight:600}
@@ -45,22 +45,26 @@
   .alertbar .band-name{font-weight:650}
   .alertbar .desc{color:var(--ink-2);font-size:12.5px}
 
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px}
+  .tiles2{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:stretch}
+  .tbig{flex:1.1 1 320px;min-width:0;display:flex;flex-direction:column;gap:10px}
+  .tbig .tile{flex:1}
+  .tbig .tile .k{font-size:15.5px}
+  .tbig .tile .v{font-size:38px}
+  .tbig .tile .n{font-size:13px}
+  .tsmall{flex:1.6 1 420px;min-width:0;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;align-content:stretch}
   .tile{background:var(--surface-1);border:1px solid var(--ring);border-radius:10px;padding:12px 14px}
-  .tile .k{font-size:12px;color:var(--ink-2)}
+  .tile .k{font-size:13.5px;font-weight:700;color:var(--ink-1)}
   .tile .v{font-size:26px;font-weight:700;margin-top:2px}
-  .tile .n{font-size:12px;color:var(--ink-muted);margin-top:2px}
+  .tile .n{font-size:12.5px;color:var(--ink-1);margin-top:3px;line-height:1.4}
 
-  .bands{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}
-  .band{border:1px solid var(--ring);border-radius:9px;padding:9px 11px;background:var(--surface-1);
-    border-left-width:4px}
-  .band .bn{font-weight:650;font-size:12.5px;display:flex;justify-content:space-between}
-  .band .bc{font-size:20px;font-weight:700}
-  .band .bd{font-size:11.5px;color:var(--ink-2);margin-top:2px}
-  .band .ba{font-size:11.5px;color:var(--ink-1);margin-top:4px;font-weight:600}
-
-  .main{display:grid;grid-template-columns:minmax(320px,5fr) minmax(420px,7fr);gap:12px}
-  @media(max-width:980px){.main{grid-template-columns:1fr}}
+  .tabbar{display:flex;gap:6px;margin-bottom:12px;border-bottom:2px solid var(--grid)}
+  .tabbar button{border:0;border-radius:8px 8px 0 0;padding:8px 18px;font-size:13.5px;font-weight:650;
+    background:transparent;color:var(--ink-2)}
+  .tabbar button.active{background:var(--surface-1);color:var(--ink-1);
+    box-shadow:inset 0 -2px 0 var(--seq-450)}
+  .tabpane{display:none}
+  .tabpane.active{display:block}
   .panel{background:var(--surface-1);border:1px solid var(--ring);border-radius:10px;overflow:hidden}
   .panel h2{font-size:13px;margin:0;padding:10px 14px 8px;font-weight:650}
   .panel .note{padding:0 14px 8px;color:var(--ink-muted);font-size:11.5px}
@@ -68,20 +72,104 @@
   .filters select{font:inherit;padding:3px 6px;border:1px solid var(--ring);border-radius:6px;
     background:var(--surface-1);color:var(--ink-1);max-width:200px}
   .filters .fnote{color:var(--ink-muted);font-size:11px}
-  .radarctl{display:none;gap:10px;align-items:center;padding:8px 14px;font-size:12px;color:var(--ink-2);
-    border-top:1px solid var(--grid);flex-wrap:wrap}
-  .radarctl .fnote{color:var(--ink-muted);font-size:10.5px;flex-basis:100%}
-  .radarctl input[type=range]{min-width:120px}
+  .mapmode-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:0 0 8px;
+    font-size:12.5px;color:var(--ink-2)}
+  .searchwrap{position:relative;display:inline-block}
+  .searchwrap input{font:inherit;font-size:12.5px;padding:5px 10px;width:230px;
+    border:1px solid var(--ring);border-radius:8px;background:var(--surface-1);color:var(--ink-1)}
+  .searchwrap input:focus{outline:none;border-color:var(--seq-450)}
+  #areaSuggest{position:absolute;top:calc(100% + 3px);left:0;z-index:1200;min-width:260px;
+    max-height:280px;overflow-y:auto;background:var(--surface-1);border:1px solid var(--ring);
+    border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+  #areaSuggest .sg{display:block;width:100%;text-align:left;border:0;cursor:pointer;
+    font:inherit;font-size:12.5px;padding:6px 10px;background:transparent;color:var(--ink-1)}
+  #areaSuggest .sg:hover, #areaSuggest .sg.hi{background:var(--band-0-wash)}
+  #areaSuggest .sg .tp{color:var(--ink-muted);font-size:10.5px;margin-left:6px}
+  .segwrap{display:inline-flex;border:1px solid var(--ring);border-radius:8px;overflow:hidden}
+  .segbtn{font:inherit;font-size:12px;font-weight:600;padding:5px 12px;border:0;cursor:pointer;
+    background:var(--surface-1);color:var(--ink-2)}
+  .segbtn + .segbtn{border-left:1px solid var(--ring)}
+  .segbtn:hover{color:var(--ink-1)}
+  .segbtn.active{background:var(--seq-450);color:#fff}
+  .mapmode-row select, .mapmode-row input[type=date]{font:inherit;padding:3px 6px;
+    border:1px solid var(--ring);border-radius:6px;background:var(--surface-1);color:var(--ink-1)}
+  /* always visible: the date range + boundary drive BOTH the density fill and the
+     historical heatmap, and the heatmap is available in either map mode */
+  #densityControls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .hmwrap{overflow-x:auto;padding:4px 14px 12px}
+  .hmgrid{display:grid;gap:2px;font-size:10.5px;color:var(--ink-2);min-width:420px}
+  .hm-lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;
+    padding-right:8px;line-height:18px;cursor:pointer}
+  .hm-lab:hover{color:var(--seq-450);text-decoration:underline}
+  .hm-lab.active{color:var(--seq-450);font-weight:750}
+  .hm-cell{height:18px;border-radius:2px;min-width:14px;cursor:default}
+  .hm-cell:hover{outline:2px solid var(--seq-450);outline-offset:-1px}
+  .hm-x{font-size:9.5px;color:var(--ink-muted);text-align:center;white-space:nowrap;
+    overflow:hidden;line-height:14px}
+  .density-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-muted)}
+  .density-legend .bar{width:90px;height:10px;border-radius:3px;border:1px solid var(--ring)}
+  .density-total{font-size:13px;color:var(--ink-1);padding:0 0 8px}
+  .radarctl{display:none;flex-direction:column;gap:6px;padding:10px 14px 8px;font-size:12px;color:var(--ink-2);
+    border-top:1px solid var(--grid)}
+  .radarctl-row{display:flex;gap:10px;align-items:center}
+  .radarctl-play{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;
+    background:#1f2937;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .radarctl-play:hover{background:#111827}
+  .radarctl-time{font-weight:750;color:var(--ink-1);min-width:130px}
+  .radarctl-slider-wrap{flex:1;min-width:120px;position:relative}
+  .radarctl input[type=range]{width:100%;accent-color:#1f2937}
+  .radarctl-ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-muted);
+    padding:0 2px;margin-top:-2px}
+  .radarctl .fnote{color:var(--ink-muted);font-size:10.5px}
+  /* smooth radar crossfade: opacity is set via inline style on the layer's tile-pane
+     container (Leaflet DomUtil.setOpacity), so a plain CSS transition on that property
+     turns the frame-swap into a fade instead of a hard cut. Transition duration is kept
+     shorter than the frame step (see radarTimer) so each fade fully resolves before the
+     next swap fires — that's what reads as continuous "video" motion instead of a slideshow. */
+  #wxmap .leaflet-layer{transition:opacity .18s ease-out}
+  /* collapsible instructional notes: every map section's how-to text folds behind a
+     one-line summary so the maps lead with data, not instructions */
+  .helpnote{margin:0 14px 8px;font-size:11.5px}
+  .helpnote summary{cursor:pointer;color:var(--ink-muted);font-weight:600;
+    padding:2px 0;list-style-position:inside}
+  .helpnote summary:hover{color:var(--ink-1)}
+  .helpnote .note{padding:6px 0 0}
   ol.prio{margin:0;padding:2px 14px 12px 30px;font-size:13.5px}
   ol.prio li{margin:6px 0;padding:6px 10px;border-left:4px solid var(--grid);
     background:var(--page);border-radius:0 7px 7px 0}
   ol.prio .verb{font-weight:750;letter-spacing:.02em}
   #map{height:520px;background:var(--grid)}
+  /* popups: fixed LIGHT translucent card with black ink (user request — independent of the
+     page theme, so the clicked area stays visible underneath in both modes) */
+  #map .leaflet-popup-content-wrapper, #map .leaflet-popup-tip{
+    background:rgba(252,252,251,.72);
+    backdrop-filter:blur(2px)}
+  #map .leaflet-popup-content{color:#0b0b0b;margin:8px 12px}
+  #map .leaflet-popup-content b{color:#0b0b0b}
+  #wxmap{height:520px;background:var(--grid)}
+  .covgray{filter:grayscale(1)} /* blue coverage fill → gray circles on the light basemap */
+  .brief{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;
+    background:var(--grid);border-top:1px solid var(--grid)}
+  .brief .b{background:var(--surface-1);padding:9px 14px 11px}
+  .brief .bk{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted);margin-bottom:3px}
+  .brief .bv{font-size:13px;font-weight:600;line-height:1.35}
+  .tabpane > .panel + .panel{margin-top:14px}
+  .layerpanel{flex:0 0 200px;padding:10px 14px;border-left:1px solid var(--grid);font-size:12.5px}
+  .layerpanel .lp-title{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--ink-muted);font-weight:600;margin-bottom:6px}
+  .layerpanel label{display:flex;gap:7px;align-items:flex-start;margin:7px 0;cursor:pointer;
+    color:var(--ink-1);line-height:1.3}
+  .layerpanel input{margin:2px 0 0;accent-color:var(--seq-450)}
+  @media(max-width:700px){.layerpanel{flex:1 1 100%;border-left:0;border-top:1px solid var(--grid)}}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);
     text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--grid)}
+  th{position:relative}
   th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
+  .colrz{position:absolute;right:-3px;top:0;bottom:0;width:7px;cursor:col-resize;z-index:2}
+  .colrz:hover,.colrz.active{background:var(--seq-450);opacity:.5}
   th[data-k]:hover{color:var(--ink-1)}
   th[data-k].sorted{color:var(--ink-1)}
   th[data-k].sorted::after{content:" ▲";font-size:9px}
@@ -93,6 +181,15 @@
     font-weight:650;font-size:12px}
   .mmbar{display:inline-block;height:8px;border-radius:4px;background:var(--seq-450);
     vertical-align:middle;margin-right:6px;min-width:2px}
+  .stlink{color:inherit;text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+  .stlink:hover{color:var(--seq-450)}
+  #camModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;
+    align-items:flex-start;justify-content:center;padding:4vh 12px;overflow:auto}
+  #camModal .box{background:var(--surface-1);border:1px solid var(--ring);border-radius:12px;
+    max-width:780px;width:100%;padding:14px}
+  #camModalGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-top:10px}
+  #camModalGrid video{width:100%;aspect-ratio:16/9;background:#000;border-radius:7px}
+  #camModalGrid .cml{font-size:12px;font-weight:650;margin-bottom:3px}
   .trend{font-weight:650;white-space:nowrap}
   .desc-cell{color:var(--ink-2);font-size:12px;max-width:230px}
   .age-ok{color:var(--ink-muted);font-size:12px}
@@ -104,7 +201,30 @@
   .seasonbar{display:none;padding:10px 16px;border-radius:10px;margin-bottom:14px;
     background:var(--surface-1);border:1px solid var(--ring);color:var(--ink-2);font-size:13px}
   footer{color:var(--ink-muted);font-size:11.5px;margin-top:14px}
-  .spark{vertical-align:middle}
+  .fcgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+  .fcday{border:1px solid var(--ring);border-radius:9px;padding:8px 6px;text-align:center;background:var(--page)}
+  .fcday .d{font-weight:700;font-size:12px;color:var(--ink-1)}
+  .fcday .dd{font-size:10px;color:var(--ink-muted);margin-top:1px}
+  .fcday img{width:44px;height:44px;margin:4px 0 2px}
+  .fcday .hi{font-size:17px;font-weight:700;color:var(--ink-1)}
+  .fcday .lo{font-size:12.5px;color:var(--ink-muted)}
+  .fcday .tx{font-size:10.5px;color:var(--ink-2);margin-top:3px;line-height:1.25}
+  .fcnight{border-top:1px solid var(--grid);margin-top:7px;padding-top:6px}
+  .fcnight img{width:32px;height:32px;margin:0 0 2px}
+  .fcsum{margin-top:10px;border-top:1px solid var(--grid);padding-top:4px;
+    font-size:12px;color:var(--ink-2);line-height:1.5}
+  .fcsum .row{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:start;
+    padding:6px 4px;border-bottom:1px dashed var(--grid)}
+  .fcsum .row:last-child{border-bottom:0}
+  .fcsum .row.night .pname{color:var(--ink-muted);font-weight:600;padding-left:12px}
+  .fcsum .row.night .ptext{color:var(--ink-muted)}
+  .fcsum .pname{font-weight:700;color:var(--ink-1)}
+  .fcsum .pname .fcb{margin-top:3px}
+  @media(max-width:640px){.fcsum .row{grid-template-columns:1fr}}
+  .fcbadges{margin-top:4px}
+  .fcb{display:inline-block;padding:0 6px;border-radius:999px;border:1px solid var(--ring);
+    background:var(--surface-1);font-size:10px;font-weight:650;color:var(--ink-2);white-space:nowrap}
+  .fcb-warn{border-color:var(--band-5);color:var(--band-5)}
 </style>
 </head>
 <body>
@@ -113,15 +233,35 @@
   <div>
     <h1>Edmonton Storm Response — 24h Rainfall &amp; Storm Severity</h1>
     <div class="sub">Drainage Operations duty view · 23-gauge network · City of Edmonton open data (x4rm-mppc)</div>
-  </div>
-  <div style="display:flex;gap:10px;align-items:center">
-    <div class="stamp" id="stamp">loading…</div>
-    <button id="refreshBtn">Refresh now</button>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:7px;flex-wrap:wrap">
+      <div class="stamp" id="stamp">loading…</div>
+      <button id="refreshBtn">Refresh now</button>
+      <label style="font-size:12.5px;display:flex;gap:6px;align-items:center">Tracking
+        <select id="trackSel" style="font:inherit;padding:3px 6px;border:1px solid var(--ring);border-radius:6px;background:var(--surface-1);color:var(--ink-1)">
+          <option value="rain">🌧 Rainfall (summer)</option>
+          <option value="snow">❄ Snowfall (winter)</option>
+        </select>
+      </label>
+    </div>
   </div>
 </header>
 
 <div class="failbar" id="failbar">⚠ DATA UNAVAILABLE — the feed could not be reached. You have <u>no visibility</u>; do not assume "no rain". Retry or use field reports.</div>
 <div class="seasonbar" id="seasonbar">ℹ Off-season (Nov–Apr): rainfall is not measured. Quiet readings mean the feed is inactive, not dry conditions.</div>
+
+<div class="tiles2">
+  <div class="tbig">
+    <div class="tile"><div class="k">Weather alerts</div><div class="v" id="kpiAlerts">–</div><div class="n" id="kpiAlertsN">loading…</div></div>
+    <div class="tile"><div class="k">Next 24 h</div><div class="v" id="kpiFc">–</div><div class="n" id="kpiFcN">loading forecast…</div></div>
+  </div>
+  <div class="tsmall">
+    <div class="tile"><div class="k">Worst gauge (24h total)</div><div class="v" id="kpiPeak">–</div><div class="n" id="kpiPeakN"></div></div>
+    <div class="tile"><div class="k">Gauges needing crew attention</div><div class="v" id="kpiAttn">–</div><div class="n" id="kpiAttnN"></div></div>
+    <div class="tile"><div class="k" id="kpiFloodK">311 flood reports (14 d)</div><div class="v" id="kpiFlood">–</div><div class="n" id="kpiFloodN">loading…</div></div>
+    <div class="tile"><div class="k">Pump stations to check</div><div class="v" id="kpiPumps">–</div><div class="n" id="kpiPumpsN"></div></div>
+    <div class="tile"><div class="k">Road closures</div><div class="v" id="kpiClosures">–</div><div class="n" id="kpiClosuresN"></div></div>
+  </div>
+</div>
 
 <div class="alertbar" id="alertbar">
   <div class="lvl" id="alertLvl">–</div>
@@ -132,29 +272,107 @@
 </div>
 
 <div class="panel" style="margin-bottom:14px">
+  <h2>Shift brief — the picture in one glance</h2>
+  <div class="brief">
+    <div class="b"><div class="bk">Now — rain on the ground</div><div class="bv" id="bfNow">assessing…</div></div>
+    <div class="b"><div class="bk">Changing — session trend</div><div class="bv" id="bfChange">building trend buffer…</div></div>
+    <div class="b"><div class="bk">Incoming — next 24 h</div><div class="bv" id="bfIn">loading forecast…</div></div>
+    <div class="b"><div class="bk">Crew work window — next 6 h</div><div class="bv" id="bfCrew">loading forecast…</div></div>
+    <div class="b"><div class="bk">ECCC weather alerts — Edmonton</div><div class="bv" id="bfAlerts">loading…</div></div>
+    <div class="b"><div class="bk">Blind spots</div><div class="bv" id="bfBlind">–</div></div>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:14px">
   <h2>Priorities — next 30 minutes</h2>
   <ol class="prio" id="prioList"><li style="color:var(--ink-muted)">assessing…</li></ol>
 </div>
 
-<div class="tiles">
-  <div class="tile"><div class="k">Peak 24h rainfall</div><div class="v" id="kpiPeak">–</div><div class="n" id="kpiPeakN"></div></div>
-  <div class="tile"><div class="k">Stations at Dispatch or worse (rating ≥ 4)</div><div class="v" id="kpiDispatch">–</div><div class="n" id="kpiDispatchN"></div></div>
-  <div class="tile"><div class="k">Stations rising</div><div class="v" id="kpiRising">–</div><div class="n" id="kpiRisingN"></div></div>
-  <div class="tile"><div class="k">Storm shape</div><div class="v" id="kpiShape">–</div><div class="n" id="kpiShapeN"></div></div>
-</div>
-
-<div class="bands" id="bands"></div>
-
 <div class="panel" style="margin-bottom:14px">
-  <h2>Will it build? — forecast next 24 h (Open-Meteo, Edmonton)</h2>
+  <h2>Weather forecast — Environment Canada (Edmonton)</h2>
   <div class="note" id="fcHead">loading forecast…</div>
-  <div id="fcChart" style="padding:0 14px 12px"></div>
+  <div class="note" id="fcCrew"></div>
+  <!-- rendered from ECCC's own citypageweather API (same data as weather.gc.ca) — our own
+       markup, so the layout is pixel-stable regardless of alert banners on their site -->
+  <div id="ecccTable" style="padding:0 14px 6px;color:var(--ink-muted);font-size:12px">loading Environment Canada forecast…</div>
+  <div class="note" style="padding:0 14px 10px"><span id="ecccIssuedAt"></span>
+    <a href="https://weather.gc.ca/en/location/index.html?coords=53.536,-113.494" target="_blank" rel="noopener"
+       style="color:var(--seq-450)">full Environment Canada page</a> (hourly forecast, current conditions)
+    — alert polygons are also on the map's "Weather alerts (ECCC)" layer.</div>
 </div>
 
-<div class="main">
+
+<div id="tabOps" class="tabpane active">
+ <div class="panel" style="margin-bottom:14px">
+   <div class="filters" style="padding-top:10px">
+      <label>District <select id="fDistrict"><option value="">All</option></select></label>
+      <label>Station <select id="fStation"><option value="">All</option></select></label>
+      <label>Rating <select id="fRating"><option value="">All</option></select></label>
+      <label>Feed says <select id="fSays"><option value="">All</option></select></label>
+      <button id="fClear" type="button">Clear</button>
+      <span class="fnote">filters the station table and the map's markers (gauges, pumps, closures, 311 reports, cameras); district fill and citywide KPIs are unaffected</span>
+   </div>
+ </div>
+ <div class="panel" style="margin-bottom:14px">
+   <h2>Historical patterns — weather-related 311 reports per month</h2>
+   <details class="helpnote"><summary>ℹ How to read this heatmap</summary>
+   <div class="note">Grid heatmap for historical review: each row is a
+     <b>district or neighbourhood</b> (follows the Boundary buttons below), each column a
+     <b>month</b> of the selected date range (Quick range / From–To below), cell color = count
+     of <b>weather-related 311 reports</b> that month — flooding/ponding, drainage, snow,
+     windrows, plowing/blading, icy conditions and extreme weather (darker = more; both seasons
+     included so summer and winter patterns can be compared). Pick a district in the
+     filter bar above to zoom the rows to it — or <b>click any row label</b> to apply that
+     district to the map, station table and heatmap at once (click again to clear). Changing
+     the range or boundary also flips the map to 311-density view so all three stay in sync.
+     Hover any cell for the exact count. Note the first/last columns can be <b>partial months</b>
+     (the range may start or end mid-month), so they read lighter than a full month would.
+     <b>Gauge severity has no public history</b> — the rainfall feed is a live snapshot only,
+     so a severity-by-month grid cannot be built from the source (this dashboard never invents
+     history); 311 volume is the closest published month-by-month signal.</div>
+   </details>
+   <div class="hmwrap"><div id="hmGrid" class="hmgrid"></div></div>
+   <div class="note" id="hmStatus">loading heatmap…</div>
+ </div>
+ <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+  <div style="flex:1 1 460px;min-width:0;display:flex;flex-direction:column;gap:14px">
   <div class="panel">
-    <h2>Where it is raining hardest</h2>
-    <div class="note">Each ward is filled by its <b>worst gauge</b>, light yellow → dark red:
+    <h2 id="mapH2">Where it is raining hardest</h2>
+    <div class="mapmode-row">
+      <span class="searchwrap">
+        <input id="areaSearch" type="search" placeholder="🔍 find district / neighbourhood" autocomplete="off" spellcheck="false">
+        <div id="areaSuggest" style="display:none"></div>
+      </span>
+      <label>Map shows</label>
+      <span class="segwrap" id="mapMetricBtns">
+        <button type="button" class="segbtn active" data-v="severity">Storm severity (live gauges)</button>
+        <button type="button" class="segbtn" data-v="density">Weather 311 density</button>
+      </span>
+      <span id="densityControls">
+        <label>Quick range
+          <select id="densityPresetSel">
+            <option value="7d">Past week</option>
+            <option value="30d">Past month</option>
+            <option value="90d">Past 3 months</option>
+            <option value="365d" selected>Past year</option>
+            <option value="730d">Past 2 years</option>
+            <option value="all">All available (since Jan 2023)</option>
+            <option value="custom">Custom range</option>
+          </select>
+        </label>
+        <label>From <input type="date" id="densityFrom"></label>
+        <label>To <input type="date" id="densityTo"></label>
+        <label>Boundary</label>
+        <span class="segwrap" id="boundaryBtns">
+          <button type="button" class="segbtn active" data-v="district">Districts (15)</button>
+          <button type="button" class="segbtn" data-v="neighbourhood">Neighbourhoods (407)</button>
+        </span>
+        <span class="density-legend" id="densityLegend"></span>
+      </span>
+    </div>
+    <div id="densityTotal" class="density-total"></div>
+    <details class="helpnote"><summary>ℹ How to read this map (legend, layers, clicks)</summary>
+    <div class="note" id="wardNoteSeverity">Each ward is filled by its <b>worst gauge</b>, light yellow → dark red:
       <span style="background:#fee79a;padding:0 6px;border-radius:3px;color:#0b0b0b">0</span>
       <span style="background:#fdb63f;padding:0 6px;border-radius:3px;color:#0b0b0b">2</span>
       <span style="background:#f78f33;padding:0 6px;border-radius:3px;color:#0b0b0b">3</span>
@@ -163,46 +381,89 @@
       <span style="background:#c8c7c0;padding:0 6px;border-radius:3px;color:#0b0b0b">gray = no gauge (no visibility)</span>.
       Dots are the gauges themselves — readings apply at the gauge point; the ward fill is posture, not certainty.
       Click a ward for its stations, a dot for that station's 24h rainfall line.
-      Context layers (toggle top-right): <b>P</b> = pump station ·
+      Context layers (checkboxes beside the map): <b>P</b> = pump station ·
       <span style="color:#eda100;font-weight:700">!</span> = road disruption
       (<span style="color:#d03b3b;font-weight:700">red = emergency</span>) ·
-      <b>▣</b> = live highway camera (click to view conditions without driving out).</div>
-    <div id="map"></div>
-    <div class="radarctl" id="radarCtl">
-      <button id="radarPlay" type="button">▶ play</button>
-      <input type="range" id="radarSlider" min="0" max="0" value="0" style="flex:1">
-      <b id="radarTime">–</b>
-      <span class="fnote">ECCC radar, 6-min frames — the service keeps ~3 h of history (24 h is not offered);
-        alerts &amp; lightning show latest. © ECCC MSC GeoMet</span>
-    </div>
-    <details id="windyBox" style="padding:0 14px 12px">
-      <summary style="cursor:pointer;font-size:12.5px;color:var(--ink-2)">Regional radar / wind / storm view (Windy.com embed — loads when opened)</summary>
-      <iframe id="windyFrame" title="Windy.com regional radar"
-        data-src="https://embed.windy.com/embed2.html?lat=53.55&lon=-113.50&detailLat=53.55&detailLon=-113.50&zoom=7&overlay=radar&level=surface&menu=&message=true&calendar=now&type=map&metricWind=km%2Fh&metricTemp=%C2%B0C"
-        width="100%" height="420" style="border:0;border-radius:8px;margin-top:8px"></iframe>
+      <span style="background:#b56a00;color:#fff;font-weight:700;border-radius:50%;padding:0 5px">5</span>
+      = <span id="legend311Phrase">311 flood reports</span>, last 14 days — the badge number is
+      the exact report count for that neighbourhood
+      (<span style="color:#d03b3b;font-weight:700" id="legend311Red">red = underpass flooding</span>;
+      neighbourhood centroid, daily feed) ·
+      <b>▣</b> = live traffic camera — 58 city intersections, click for live video without driving out.
+      Click a district for its gauges + crew context (pumps, closures, 311 reports, nearest camera).</div>
+    <div class="note" id="wardNoteDensity" style="display:none">Fill = <b>reports per 30 days</b>
+      (standardized rate, not the raw count) — a district picked over 2 years otherwise looks
+      "worse" than one picked over 1 week purely from accumulating longer, not from being denser;
+      dividing by the span you chose keeps colors comparable across any Quick range/custom dates.
+      Continuous light → dark (not fixed bands) — read the rate off the legend above or a click
+      popup, which also shows the raw count. Counts are <b>weather-related 311 categories</b>
+      (flooding/ponding, drainage, snow, windrows, plowing/blading, icy conditions, extreme
+      weather — both seasons) — a broader set than the 14-day layer's markers, which track only
+      the current mode's flood or snow/ice incident types. Use Quick range for one-click
+      windows or From/To for anything else — <b>Edmonton's 311 open dataset only goes back to
+      Jan 2023</b> (~3.5 years), so the date pickers won't go earlier than that or past today; a
+      10-year window is not available from the source. Reports are geocoded to the neighbourhood
+      centroid (daily feed), so this reflects
+      where residents call in most often, not where today's storm is worst — check the severity
+      view above for that. <b>A large share of 311 requests carry no neighbourhood tag</b>
+      (city-wide or unaddressed service types) and can't be placed on this map — the fill shows
+      only the geolocatable subset, not the full request volume. Click a ward/neighbourhood for
+      its exact count.</div>
     </details>
+    <div style="display:flex;flex-wrap:wrap;gap:0">
+      <div id="map" style="flex:1 1 340px;min-width:0"></div>
+      <div class="layerpanel" id="layerPanel">
+        <div class="lp-title">Map layers</div>
+      </div>
+    </div>
   </div>
   <div class="panel">
+    <h2>Regional weather map — forecast animation (Windy.com)</h2>
+    <div id="wxWindyBlock">
+      <details class="helpnote">
+        <summary>▶ To play the multi-day forecast: press the play button at the map's
+          bottom-left — more…</summary>
+        <div class="note">The timeline runs ~5 days into the future for the selected overlay
+          (Windy's embed has no autoplay — one click on its own play button is required, and it
+          can't be pressed from outside the frame). Rain &amp; thunder (default) / Wind / Rain
+          accum. / Snow accum. / Temperature / Clouds all animate the multi-day forecast. The
+          <b>radar</b> overlay is the one exception: radar is observed imagery, so its playback
+          is short-range history only (~1 h platform limit) — there is no such thing as
+          "forecast radar" in the embed; use Rain &amp; thunder (or Snow accum. in winter) for
+          the predicted picture. Separate provider from Environment Canada — the Edmonton
+          gauges above remain ground truth either way.</div>
+      </details>
+      <div id="windyBox" style="padding:0 14px 12px">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0">
+          <span style="font-size:12.5px;color:var(--ink-2)">Overlay:</span>
+          <span id="windyBtns"></span>
+        </div>
+        <iframe id="windyFrame" title="Windy.com regional weather forecast animation"
+          src="https://embed.windy.com/embed2.html?lat=53.55&lon=-113.50&detailLat=53.55&detailLon=-113.50&zoom=8&overlay=thunder&level=surface&menu=&message=true&marker=true&calendar=now&type=map&metricWind=km%2Fh&metricTemp=%C2%B0C&lang=en"
+          width="100%" height="600" style="border:0;border-radius:8px;margin-top:8px;height:clamp(480px,70vh,760px)"></iframe>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div class="panel" style="flex:1.15 1 520px;min-width:0">
     <h2>Stations ranked by severity</h2>
     <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
-    <div class="filters">
-      <label>Station <select id="fStation"><option value="">All</option></select></label>
-      <label>Rating <select id="fRating"><option value="">All</option></select></label>
-      <label>Feed says <select id="fSays"><option value="">All</option></select></label>
-      <button id="fClear" type="button">Clear</button>
-      <span class="fnote">filters the list &amp; gauge dots; citywide KPIs and ward fill are unaffected</span>
-    </div>
     <div style="overflow-x:auto">
-    <table id="tbl">
+    <table id="tbl" style="table-layout:fixed">
       <thead><tr>
-        <th data-k="station">Station</th><th data-k="district">District</th>
-        <th class="num" data-k="mm">24h total</th><th data-k="rating">Rating</th>
-        <th data-k="trend">Trend (session)</th><th data-k="says">Feed says</th>
+        <th data-k="station" style="width:64px">Station</th>
+        <th data-k="district" style="width:110px">District</th>
+        <th style="width:96px">311 · closures</th>
+        <th class="num" data-k="mm" style="width:118px">24h rain (mm)</th>
+        <th style="width:132px">24h line</th>
+        <th data-k="rating" style="width:150px">Rating · action now</th>
+        <th data-k="says">Feed says</th>
       </tr></thead>
       <tbody></tbody>
     </table>
     </div>
   </div>
+ </div>
 </div>
 
 <footer>
@@ -210,6 +471,18 @@
   a silent gauge in an active storm is a blind spot, not calm. Rainfall measured May–October; feed updates ~every 15 min.
   Trend is a <em>session</em> estimate accumulated in this browser, not official history.
 </footer>
+
+<div id="camModal">
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <b id="camModalTitle"></b><button id="camModalClose" type="button">✕ close</button>
+    </div>
+    <div id="camModalGrid"></div>
+    <div style="color:var(--ink-muted);font-size:11px;margin-top:8px">Live video — City of Edmonton
+      traffic cameras (edmontontrafficcam.com), nearest first. Streams stop when this window closes.
+      Cameras sit at intersections, not at the gauge — use them as eyes near the gauge, not at it.</div>
+  </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -235,16 +508,101 @@ const inkOn = hex => { // dark text on light fills, white on deep ones
 const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
 const fmtMm = v => v.toFixed(1)+" mm";
 
-let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, cameraLayer=null, timer=null;
+let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, cameraLayer=null,
+    flood311Layer=null, timer=null;
+let closuresList = [], flood311List = []; // for the district crew-context card
 
-// Alberta 511 highway cameras around Edmonton (ring road & approaches). The 511 JSON API
-// blocks browser CORS, so LOCATIONS are a baked snapshot (17 cams, taken 2026-07-12 from
-// https://511.alberta.ca/api/v2/get/cameras) — stable infrastructure, like pump stations.
-// IMAGES are fetched live (the /map/Cctv/<id> endpoints serve open-CORS PNGs), with a
-// cache-buster so each popup open shows the current frame.
-const CAMERAS = [{"lat":53.6098,"lon":-113.354,"loc":"Anthony Henday Drive at North Saskatchewan River (east)","rd":"Hwy 216","v":[{"id":117,"d":"N/A"},{"id":118,"d":"N/A"},{"id":119,"d":"N/A"}]},{"lat":53.5707,"lon":-113.272,"loc":"Hwy 16 at Rge Rd 231 / Clover Bar Rd","rd":"Hwy 16","v":[{"id":273,"d":"North side of HWY"},{"id":275,"d":"North side of HWY"},{"id":276,"d":"North side of HWY"}]},{"lat":53.7088,"lon":-113.271,"loc":"Hwy 15 SW of Hwy 37","rd":"Hwy 15","v":[{"id":359,"d":"East Side of Hwy 15"}]},{"lat":53.4307,"lon":-113.492,"loc":"Hwy 2 South of Hwy 216","rd":"Hwy 2","v":[{"id":530,"d":"N/A"},{"id":531,"d":"N/A"},{"id":532,"d":"N/A"}]},{"lat":53.4355,"lon":-113.503,"loc":"Hwy 216 W of Hwy 2","rd":"Hwy 216","v":[{"id":536,"d":"WB Ramp"},{"id":537,"d":"WB Ramp"},{"id":538,"d":"WB Ramp"}]},{"lat":53.6338,"lon":-113.393,"loc":"Hwy 216 at Hwy 15","rd":"Hwy 216","v":[{"id":120,"d":"East side"},{"id":121,"d":"East side"}]},{"lat":53.63378,"lon":-113.39285,"loc":"Hwy 216 & Hwy 15 Interchange","rd":"Hwy 216","v":[{"id":114,"d":"East"},{"id":115,"d":"South"},{"id":116,"d":"West"}]},{"lat":53.5688,"lon":-113.344,"loc":"Anthony Henday Dr & Hwy 16 Interchange","rd":"Hwy 216","v":[{"id":122,"d":"NB Ramp"},{"id":123,"d":"NB Ramp"},{"id":125,"d":"NB Ramp"},{"id":126,"d":"NB Ramp"}]},{"lat":53.4372,"lon":-113.483,"loc":"Anthony Henday Dr & 91 Street Overpass","rd":"Hwy 216","v":[{"id":533,"d":"EB south side"},{"id":534,"d":"view 2"},{"id":535,"d":"view 3"}]},{"lat":53.5417,"lon":-113.663,"loc":"Hwy 216 & Hwy 16A Interchange (West)","rd":"Hwy 216","v":[{"id":127,"d":"16A WB"},{"id":128,"d":"16A WB"},{"id":129,"d":"16A WB"}]},{"lat":53.5375,"lon":-113.654,"loc":"Hwy 216 & Hwy 16A Interchange (East)","rd":"Hwy 216","v":[{"id":130,"d":"16A EB"},{"id":131,"d":"16A EB"},{"id":132,"d":"16A EB"}]},{"lat":53.518,"lon":-113.657,"loc":"Hwy 216 & Whitemud Drive Interchange","rd":"Hwy 216","v":[{"id":133,"d":"NB east side"},{"id":134,"d":"view 2"},{"id":135,"d":"view 3"}]},{"lat":53.5129,"lon":-113.66,"loc":"Anthony Henday Dr & Whitemud Dr West Interchange","rd":"Hwy 216","v":[{"id":542,"d":"SB west side"},{"id":543,"d":"view 2"},{"id":544,"d":"view 3"}]},{"lat":53.5408,"lon":-113.66,"loc":"Anthony Henday Dr & Stony Plain Rd West Interchange","rd":"Hwy 216","v":[{"id":545,"d":"SB west side"},{"id":546,"d":"view 2"},{"id":547,"d":"view 3"},{"id":548,"d":"view 4"}]},{"lat":53.5726,"lon":-113.659,"loc":"Hwy 216 & Hwy 16 Interchange (West)","rd":"Hwy 216","v":[{"id":136,"d":"16 EB to AHD NB"},{"id":137,"d":"view 2"},{"id":138,"d":"view 3"}]},{"lat":53.5755,"lon":-113.664,"loc":"Hwy 216 & Hwy 16 Interchange (West ramp)","rd":"Hwy 216","v":[{"id":351,"d":"16 WB to AHD SB"},{"id":352,"d":"view 2"},{"id":353,"d":"view 3"}]},{"lat":53.5746,"lon":-113.666,"loc":"Anthony Henday Dr & Yellowhead Trail West Interchange","rd":"Hwy 216","v":[{"id":549,"d":"SB Ramp"},{"id":550,"d":"view 2"},{"id":551,"d":"view 3"},{"id":552,"d":"view 4"}]}];
-const camUrl = id => `https://511.alberta.ca/map/Cctv/${id}?t=${Date.now()}`;
-function swapCam(imgEl, viewId){ imgEl.src = camUrl(viewId); }
+// City of Edmonton traffic cameras (edmontontrafficcam.com — a City of Edmonton web app;
+// note the coe logos + coewebapps.edmonton.ca assets). The camera LIST endpoint
+// (POST Default.aspx/GetCameras) only allows the city's own origin, so locations + stream
+// codes are a baked snapshot (58 online cams, taken 2026-07-12) — stable infrastructure,
+// like pump stations. The STREAMS are live HLS video (winkcdn, open CORS):
+// https://{u}/{f}/public/hls/{s}.m3u8 — played via hls.js, lazy-loaded on first popup.
+const CAMERAS = [{"lat":53.4538,"lon":-113.493,"loc":"23 Avenue & Gateway Boulevard","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6212-B834-BD83-1FC4_ab","f":2},{"lat":53.4573,"lon":-113.589,"loc":"23 Avenue & Terwillegar Drive","u":"cityed1-winkcdn1.winkcdn.com","s":"WF06-3E67-A9A3-DD98-BCE9_ab","f":1},{"lat":53.4655,"lon":-113.517,"loc":"34 Avenue & 111 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6253-B834-FD09-D7B1_ab","f":2},{"lat":53.4677,"lon":-113.492,"loc":"34 Avenue & Gateway Boulevard","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-612E-A9A4-5D9B-3767_ab","f":1},{"lat":53.4882,"lon":-113.517,"loc":"51 Avenue & 111 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FF-A9A4-6F3E-979B_ab","f":1},{"lat":53.4904,"lon":-113.572,"loc":"53 Avenue & Whitemud Drive","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FF-A9A4-B7EB-75EF_ab","f":1},{"lat":53.5123,"lon":-113.526,"loc":"76 Avenue & 114 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6254-B834-103A-D237_ab","f":2},{"lat":53.5196,"lon":-113.615,"loc":"87 Avenue & 170 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FF-A9A4-EA01-A2A4_ab","f":1},{"lat":53.5315,"lon":-113.616,"loc":"95 Avenue & 170 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6254-B834-25D7-206B_ab","f":2},{"lat":53.5339,"lon":-113.501,"loc":"97 Avenue & 105 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-612E-A9A4-ECC8-78E9_ab","f":1},{"lat":53.5376,"lon":-113.443,"loc":"98 Avenue & 75 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6200-A9A4-9248-AA0E_ab","f":1},{"lat":53.5372,"lon":-113.508,"loc":"99 Avenue & 109 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6253-B834-9CA6-8A56_ab","f":2},{"lat":53.5588,"lon":-113.503,"loc":"111 Avenue & 106 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FD-A9A4-6AB0-7F89_ab","f":1},{"lat":53.5629,"lon":-113.448,"loc":"112 Avenue & Wayne Gretzky Drive","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FE-A9A4-3FAD-2D18_ab","f":1},{"lat":53.5995,"lon":-113.492,"loc":"137 Avenue & 97 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-612C-B834-9339-3B57_ab","f":2},{"lat":53.5993,"lon":-113.574,"loc":"137 Avenue & St. Albert Trail","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FF-A9A4-2F4A-CBAB_ab","f":1},{"lat":53.5082,"lon":-113.443,"loc":"Argyll Road & 75 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-612C-B834-352F-2DAD_ab","f":2},{"lat":53.5558,"lon":-113.439,"loc":"Capilano Bridge","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6254-B834-CF82-9FA6_ab","f":2},{"lat":53.6116,"lon":-113.591,"loc":"Mark Messier Trail & 156 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6254-B834-E50F-329B_ab","f":2},{"lat":53.5396,"lon":-113.49,"loc":"McDougall Hill","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6200-A9A4-AC2A-938A_ab","f":1},{"lat":53.5661,"lon":-113.503,"loc":"Princess Elizabeth Avenue & 106 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6254-B834-C25C-C3EF_ab","f":2},{"lat":53.507,"lon":-113.567,"loc":"Quesnell Bridge","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6200-A9A4-C6B8-3B95_ab","f":1},{"lat":53.531,"lon":-113.5,"loc":"River Valley Road & 105 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6201-A9A4-0E65-61C7_ab","f":1},{"lat":53.4684,"lon":-113.582,"loc":"Rabbit Hill Road & Terwillegar Drive","u":"cityed1-winkcdn1.winkcdn.com","s":"WF06-30FA-A9A4-220A-30B5_ab","f":1},{"lat":53.5237,"lon":-113.496,"loc":"Saskatchewan Drive & Gateway Boulevard","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6200-A9A4-68AE-6BB8_ab","f":1},{"lat":53.5411,"lon":-113.615,"loc":"Stony Plain Road & 170 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-22C4-3DE6_ab","f":2},{"lat":53.5165,"lon":-113.526,"loc":"University Avenue & 114 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6202-A9A4-AFB0-E084_ab","f":1},{"lat":53.5239,"lon":-113.512,"loc":"Walterdale Hill & 109 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-31C5-F5A3_ab","f":2},{"lat":53.4819,"lon":-113.369,"loc":"Whitemud Drive & 17 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-48E0-C2ED_ab","f":2},{"lat":53.4869,"lon":-113.394,"loc":"Whitemud Drive & 34 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6214-A9A4-9FEE-8301_ab","f":1},{"lat":53.4879,"lon":-113.418,"loc":"Whitemud Drive & 50 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-665A-B833-B555-3CAF_ab","f":2},{"lat":53.4857,"lon":-113.443,"loc":"Whitemud Drive & 75 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6214-A9A4-B483-5281_ab","f":1},{"lat":53.4832,"lon":-113.468,"loc":"Whitemud Drive & 91 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-6DB5-AF59_ab","f":2},{"lat":53.4802,"lon":-113.487,"loc":"Whitemud Drive & 99 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6217-A9A4-E5B3-B59F_ab","f":1},{"lat":53.4831,"lon":-113.517,"loc":"Whitemud Drive & 111 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-8195-9112_ab","f":2},{"lat":53.4827,"lon":-113.542,"loc":"Whitemud Drive & 122 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6217-A9A4-F175-ED36_ab","f":1},{"lat":53.5131,"lon":-113.58,"loc":"Whitemud Drive & 149 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-C9FB-30ED_ab","f":2},{"lat":53.5117,"lon":-113.597,"loc":"Whitemud Drive & 159 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6218-A9A4-63C2-087D_ab","f":1},{"lat":53.5122,"lon":-113.615,"loc":"Whitemud Drive & 170 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-E048-08EB_ab","f":2},{"lat":53.5115,"lon":-113.631,"loc":"Whitemud Drive & 178 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6218-A9A4-6A4A-A9AC_ab","f":1},{"lat":53.4804,"lon":-113.496,"loc":"Whitemud Drive & Calgary Trail","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-612E-A9A4-4087-C199_ab","f":1},{"lat":53.5028,"lon":-113.559,"loc":"Whitemud Drive & Fox Drive","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6255-B834-ED8B-66D3_ab","f":2},{"lat":53.4804,"lon":-113.492,"loc":"Whitemud Drive & Gateway Boulevard","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6256-B834-65E0-F760_ab","f":2},{"lat":53.5821,"lon":-113.419,"loc":"Yellowhead Trail & 50 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6211-B834-9DEA-9F2C_ab","f":2},{"lat":53.5781,"lon":-113.435,"loc":"Yellowhead Trail & 62 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-61FF-A9A4-9898-116B_ab","f":1},{"lat":53.5782,"lon":-113.443,"loc":"Yellowhead Trail & 66 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6211-B834-9970-D09E_ab","f":2},{"lat":53.582,"lon":-113.467,"loc":"Yellowhead Trail & 82 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6211-B834-91E0-1F10_ab","f":2},{"lat":53.5812,"lon":-113.492,"loc":"Yellowhead Trail & 97 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6251-A9A4-07C7-2977_ab","f":1},{"lat":53.5813,"lon":-113.505,"loc":"Yellowhead Trail & 107 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6211-B834-89B0-59D8_ab","f":2},{"lat":53.5807,"lon":-113.526,"loc":"Yellowhead Trail & 121 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6251-A9A4-138D-9FCD_ab","f":1},{"lat":53.5808,"lon":-113.541,"loc":"Yellowhead Trail & 127 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6201-B834-0868-5F05_ab","f":2},{"lat":53.5816,"lon":-113.578,"loc":"Yellowhead Trail & 149 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF01-84C4-424E-43EB-E181_ab","f":2},{"lat":53.5793,"lon":-113.591,"loc":"Yellowhead Trail & 156 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6200-B834-BBC0-B853_ab","f":2},{"lat":53.5739,"lon":-113.616,"loc":"Yellowhead Trail & 170 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6251-A9A4-1D8E-86E2_ab","f":1},{"lat":53.5724,"lon":-113.639,"loc":"Yellowhead Trail & 184 Street","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6200-B834-6ECB-5DE4_ab","f":2},{"lat":53.5806,"lon":-113.453,"loc":"Yellowhead Trail & Fort Road","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6251-A9A4-29D3-6C37_ab","f":1},{"lat":53.5812,"lon":-113.557,"loc":"Yellowhead Trail & St. Albert Trail","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-6251-A9A4-7DD4-578F_ab","f":1},{"lat":53.5749,"lon":-113.383,"loc":"Yellowhead Trail & Victoria Trail","u":"cityed1-winkcdn1.winkcdn.com","s":"WF05-62E8-A9A4-0134-D087_ab","f":1}];
+// one active stream at a time, destroyed on popup close, so streams don't pile up
+let activeHls = null, hlsLoading = null;
+function ensureHls(){
+  if (window.Hls) return Promise.resolve();
+  if (!hlsLoading) hlsLoading = new Promise(res=>{
+    const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
+    sc.onload = res; sc.onerror = res;
+    document.head.appendChild(sc);
+  });
+  return hlsLoading;
+}
+function stopCamStream(){ if (activeHls){ activeHls.destroy(); activeHls = null; } }
+async function attachCamStream(video, cam){
+  const src = `https://${cam.u}/${cam.f}/public/hls/${cam.s}.m3u8`;
+  const fail = () => { video.outerHTML = '<div style="color:#898781;font-size:11px;padding:18px 8px">stream unavailable right now — the camera may be down; try another site</div>'; };
+  await ensureHls();
+  stopCamStream();
+  if (window.Hls && Hls.isSupported()){
+    activeHls = new Hls();
+    activeHls.loadSource(src);
+    activeHls.attachMedia(video);
+    activeHls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play());
+    activeHls.on(Hls.Events.ERROR, (_,d)=>{ if (d.fatal){ stopCamStream(); fail(); } });
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")){
+    video.src = src; video.onerror = fail; video.play(); // Safari native HLS
+  } else fail();
+}
+// station → 4 nearest live cams, in a modal grid (each stream gets its own Hls instance,
+// all destroyed on close so nothing keeps downloading in the background)
+let modalHls = [];
+function closeCamModal(){
+  modalHls.forEach(h=>h.destroy()); modalHls = [];
+  document.getElementById("camModalGrid").innerHTML = "";
+  document.getElementById("camModal").style.display = "none";
+}
+async function openStationCams(station, lat, lon){
+  if (!Number.isFinite(lat)) return;
+  const near = CAMERAS.map(c=>({c, d2:((c.lat-lat)*111)**2 + ((c.lon-lon)*66)**2}))
+    .sort((a,b)=>a.d2-b.d2).slice(0,4);
+  const grid = document.getElementById("camModalGrid");
+  document.getElementById("camModalTitle").textContent =
+    `${station} — 4 nearest live traffic cameras`;
+  grid.innerHTML = near.map((n,i)=>`<div>
+      <div class="cml">📷 ${n.c.loc} <span style="color:var(--ink-muted);font-weight:500">~${Math.sqrt(n.d2).toFixed(1)} km</span></div>
+      <video id="stcam_${i}" muted autoplay playsinline controls></video>
+    </div>`).join("");
+  document.getElementById("camModal").style.display = "flex";
+  await ensureHls();
+  near.forEach((n,i)=>{
+    const v = document.getElementById("stcam_"+i); if (!v) return;
+    const src = `https://${n.c.u}/${n.c.f}/public/hls/${n.c.s}.m3u8`;
+    v.addEventListener("canplay", ()=>v.play(), {once:true}); // autoplay can miss the first attempt
+    if (window.Hls && Hls.isSupported()){
+      const h = new Hls(); modalHls.push(h);
+      h.loadSource(src); h.attachMedia(v);
+      h.on(Hls.Events.MANIFEST_PARSED, ()=>v.play());
+      h.on(Hls.Events.ERROR, (_,d)=>{ if (d.fatal) v.outerHTML =
+        '<div style="color:var(--ink-muted);font-size:11px;padding:20px 6px">stream unavailable right now</div>'; });
+    } else if (v.canPlayType("application/vnd.apple.mpegurl")){ v.src = src; v.play(); }
+  });
+}
+// district reference point for "nearest cameras": mean of its gauges, else polygon centroid
+function districtRef(name){
+  const sts = districtStations(name).filter(s=>s.lat!=null);
+  if (sts.length) return [sts.reduce((a,s)=>a+s.lat,0)/sts.length, sts.reduce((a,s)=>a+s.lon,0)/sts.length];
+  const f = districtFeats.find(f=>f.properties.name===name.replace(/^near /,""));
+  if (!f) return null;
+  const r = f.geometry.coordinates[0][0];
+  return [r.reduce((a,p)=>a+p[1],0)/r.length, r.reduce((a,p)=>a+p[0],0)/r.length];
+}
+document.getElementById("camModalClose").addEventListener("click", closeCamModal);
+document.getElementById("camModal").addEventListener("click", e=>{ if (e.target.id==="camModal") closeCamModal(); });
+document.querySelector("#tbl tbody").addEventListener("click", e=>{
+  const d = e.target.closest("a.dstlink"); // check first: district links also carry .stlink styling
+  if (d){ e.preventDefault();
+    const ref = districtRef(d.dataset.d);
+    if (ref) openStationCams(`${d.dataset.d} (district)`, ref[0], ref[1]);
+    return;
+  }
+  const a = e.target.closest("a.stlink");
+  if (a){ e.preventDefault(); openStationCams(a.dataset.st, parseFloat(a.dataset.lat), parseFloat(a.dataset.lon)); }
+});
+
 function loadCameras(){
   if (!cameraLayer) return;
   CAMERAS.forEach((c,ci)=>{
@@ -253,17 +611,13 @@ function loadCameras(){
         box-shadow:0 1px 3px rgba(0,0,0,.35);color:#fff;font:700 10px/13px system-ui;text-align:center">▣</div>`,
       iconSize:[20,16], iconAnchor:[10,8]})});
     m.bindTooltip("📷 "+c.loc, {direction:"top", offset:[0,-8]});
-    m.bindPopup(()=>{
-      const imgId = "cam_img_"+ci;
-      const btns = c.v.length>1? `<div style="margin-top:4px">`+c.v.map((v,i)=>
-        `<button type="button" style="font-size:10.5px;margin-right:4px;padding:1px 7px;cursor:pointer"
-          onclick="swapCam(document.getElementById('${imgId}'), ${v.id})">${i+1}. ${v.d||"view "+(i+1)}</button>`).join("")+`</div>` : "";
-      return `<b>📷 ${c.loc}</b> <span style="color:#898781">(${c.rd})</span><br>
-        <img id="${imgId}" src="${camUrl(c.v[0].id)}" width="288" style="border-radius:6px;margin-top:5px"
-          alt="live camera: ${c.loc}" onerror="this.alt='camera image unavailable';this.style.display='none'">
-        ${btns}
-        <div style="color:#898781;font-size:10.5px;margin-top:3px">Live image, Alberta 511 (provincial highways) — refreshed each time the popup opens</div>`;
-    }, {maxWidth:320});
+    m.bindPopup(`<b>📷 ${c.loc}</b><br>
+      <video id="cam_v_${ci}" muted autoplay playsinline controls width="300"
+        style="border-radius:6px;margin-top:5px;background:#000;aspect-ratio:16/9"></video>
+      <div style="color:#898781;font-size:10.5px;margin-top:3px">Live video — City of Edmonton
+      traffic cameras (edmontontrafficcam.com); the stream stops when this popup closes</div>`, {maxWidth:330});
+    m.on("popupopen", ()=>{ const v = document.getElementById("cam_v_"+ci); if (v) attachCamStream(v, c); });
+    m.on("popupclose", stopCamStream);
     cameraLayer.addLayer(m);
   });
 }
@@ -282,78 +636,184 @@ function initMap(){
   pumpLayer = L.layerGroup();
   closureLayer = L.layerGroup();
   cameraLayer = L.layerGroup();
-  // ECCC MSC GeoMet WMS — live national weather layers (default OFF, like other context)
-  radarLayer = L.tileLayer.wms(GEOMET, {layers:"RADAR_1KM_RRAI", format:"image/png",
-    transparent:true, version:"1.3.0", opacity:.7, attribution:"Radar/alerts/lightning &copy; ECCC MSC GeoMet"});
-  alertsLayer = L.tileLayer.wms(GEOMET, {layers:"ALERTS", format:"image/png",
-    transparent:true, version:"1.3.0", opacity:.35});
-  lightningLayer = L.tileLayer.wms(GEOMET, {layers:"Lightning_2.5km_Density", format:"image/png",
-    transparent:true, version:"1.3.0", opacity:.75});
-  L.control.layers(null, {"District severity fill":wardLayer, "Rain gauges":markerLayer,
-    "Storm pump stations":pumpLayer, "Road closures (live)":closureLayer,
-    "Live cameras (Alberta 511)":cameraLayer,
-    "Weather radar (animated)":radarLayer, "Weather alerts (ECCC)":alertsLayer,
-    "Lightning density":lightningLayer},
-    {collapsed:false, position:"topright"}).addTo(map);
+  flood311Layer = L.layerGroup().addTo(map); // default ON: sparse (~a dozen badges) and it is
+                                             // the only between-gauges ground truth on the map
+  // (regional weather view is the Windy.com embed below the map — the in-app ECCC WMS
+  //  map was removed 2026-07-13 at user request; Windy's timeline covers forecast animation)
+  // layer toggles live in a constant side panel (#layerPanel), not on the map canvas —
+  // map.fire("overlayadd"/"overlayremove") keeps the radar-control & lightning-note hooks working
+  // [name, layer, defaultOn, legend icon matching the marker drawn on the map]
+  const ic = s => `<span style="display:inline-flex;justify-content:center;align-items:center;
+    flex:0 0 16px;width:16px;height:16px;margin-top:1px">${s}</span>`;
+  const LAYERS = [
+    ["District severity fill", wardLayer,      true,
+      ic(`<span style="width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,#fee79a 0%,#f78f33 55%,#8a1616 100%)"></span>`)],
+    ["Rain gauges",            markerLayer,    true,
+      ic(`<span style="width:12px;height:12px;border-radius:50%;background:#1a1a19;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--ring)"></span>`)],
+    ["Storm pump stations",    pumpLayer,      false,
+      ic(`<span style="width:14px;height:14px;border-radius:3px;background:#fff;border:2px solid #52514e;color:#52514e;font:700 9px/10px system-ui;text-align:center">P</span>`)],
+    ["Road closures (live)",   closureLayer,   false,
+      ic(`<span style="width:14px;height:14px;border-radius:50%;background:#eda100;color:#fff;font:700 10px/14px system-ui;text-align:center">!</span>`)],
+    [trackCfg().layerLabel, flood311Layer,  true,
+      ic(`<span style="width:14px;height:14px;border-radius:50%;background:#b56a00;color:#fff;font:700 9.5px/14px system-ui;text-align:center">F</span>`)],
+    ["Live traffic cameras (CoE)", cameraLayer, false,
+      ic(`<span style="width:16px;height:13px;border-radius:3px;background:#3a3935;color:#fff;font:700 9px/12px system-ui;text-align:center">▣</span>`)]
+  ];
+  const buildToggles = (panelId, targetMap, defs)=>{
+    const lp = document.getElementById(panelId);
+    defs.forEach(([name, layer, on, icon])=>{
+      const lab = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = on;
+      cb.addEventListener("change", ()=>{
+        if (cb.checked){ targetMap.addLayer(layer); targetMap.fire("overlayadd",{layer}); }
+        else { targetMap.removeLayer(layer); targetMap.fire("overlayremove",{layer}); }
+      });
+      const icSpan = document.createElement("span"); icSpan.innerHTML = icon;
+      lab.appendChild(icSpan.firstElementChild);
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(name));
+      lp.appendChild(lab);
+    });
+  };
+  buildToggles("layerPanel", map, LAYERS);
+  { // one-click blank slate for the legend: unchecks every layer toggle (map only —
+    // the table filter bar has its own Clear button)
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = "Clear all layers";
+    b.style.cssText = "margin-top:10px;width:100%;font-size:11.5px;padding:4px 10px";
+    b.addEventListener("click", ()=>{
+      document.querySelectorAll("#layerPanel input[type=checkbox]").forEach(cb=>{ if (cb.checked) cb.click(); });
+    });
+    document.getElementById("layerPanel").appendChild(b);
+  }
+  // markers added while a layer was hidden get fresh DOM on toggle-on — re-apply the filter
+  map.on("overlayadd", ()=>setTimeout(applyContextFilter, 0));
   loadCameras();
-  map.on("overlayadd", e=>{ if (e.layer===radarLayer){
-    document.getElementById("radarCtl").style.display="flex"; initRadarFrames(); }});
-  map.on("overlayremove", e=>{ if (e.layer===radarLayer){
-    stopRadar(); document.getElementById("radarCtl").style.display="none"; }});
   loadPumps();
   loadWards();
+  loadFlood311();
+}
+// ---------- seasonal tracking mode ----------
+// Rain (May–Oct) vs Snow (Nov–Apr): switches the ECCC radar product, the Open-Meteo
+// precipitation variable, and which 311 categories count as ground truth. The gauge
+// network itself is rain-only — off-season it reads inactive, which the seasonbar explains.
+const TRACK = {
+  rain: {radar:"RADAR_1KM_RRAI", cov:"RADAR_COVERAGE_RRAI",
+    where311:"upper(service_description) LIKE '%FLOOD%'",
+    kpiTitle:"311 flood reports (14 d)", layerLabel:"311 flood reports (14d)",
+    label311:"flood", redRe:/UNDERPASS/i, redLabel:"underpass flooding",
+    pField:"precipitation", unit:"mm", word:"rain", extremeTot:25, extremeHr:10,
+    mapTitle:"Where it is raining hardest", windyOverlay:"thunder"},
+  snow: {radar:"RADAR_1KM_RSNO", cov:"RADAR_COVERAGE_RSNO",
+    where311:"(upper(service_description) LIKE '%SNOW%' OR upper(service_description) LIKE 'ICY%' OR upper(service_description) LIKE 'ICE %' OR upper(service_description) LIKE '%WINDROW%')",
+    kpiTitle:"311 snow/ice reports (14 d)", layerLabel:"311 snow/ice reports (14d)",
+    label311:"snow/ice", redRe:/ICY|ICE CONDITIONS/i, redLabel:"icy conditions",
+    pField:"snowfall", unit:"cm", word:"snow", extremeTot:10, extremeHr:3,
+    // the gauge network measures RAIN only (inactive Nov–Apr, seasonbar explains) — in snow
+    // mode the map's live signal is the 311 snow/ice layer, and the title must say so
+    // rather than claim snowfall measurements that don't exist
+    mapTitle:"Winter conditions — 311 snow/ice reports (rain gauges idle off-season)",
+    windyOverlay:"snowAccu"}
+};
+const inSnowSeason = m => m<=4 || m>=11;
+let trackMode = localStorage.getItem("edm_track_mode") ||
+  (inSnowSeason(new Date().getMonth()+1)? "snow" : "rain");
+function trackCfg(){ return TRACK[trackMode]; }
+
+// 311 reports (q7ua-agfg), last 14 days — ground truth between gauges. Feed updates
+// daily and locations are NEIGHBOURHOOD CENTROIDS, so this is context, never the alert signal.
+async function loadFlood311(){
+  if (!flood311Layer) return;
+  const cfg = trackCfg();
+  try{
+    const since = new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+    const q = "https://data.edmonton.ca/resource/q7ua-agfg.json?$where=" +
+      encodeURIComponent(`${cfg.where311} AND date_created > '${since}'`) +
+      "&$select=service_description,request_status,date_created,neighbourhood,nbhd_latitude,nbhd_longitude&$limit=1000";
+    const rows = await fetch(q).then(r=>r.json());
+    flood311Layer.clearLayers(); // mode switches reload this layer wholesale
+    const byN = {};
+    rows.forEach(r=>{
+      if (!r.nbhd_latitude) return;
+      (byN[r.neighbourhood||"unknown"] = byN[r.neighbourhood||"unknown"] ||
+        {lat:+r.nbhd_latitude, lon:+r.nbhd_longitude, items:[]}).items.push(r);
+    });
+    flood311List = Object.values(byN).map(g=>({lat:g.lat, lon:g.lon, n:g.items.length}));
+    // KPI tile: total reports + the life-safety subset (underpass flooding / icy conditions)
+    const total = rows.filter(r=>r.nbhd_latitude).length;
+    const red = rows.filter(r=>cfg.redRe.test(r.service_description||"")).length;
+    const open = rows.filter(r=>r.request_status==="Open").length;
+    document.getElementById("kpiFloodK").textContent = cfg.kpiTitle;
+    document.getElementById("kpiFlood").textContent = total;
+    document.getElementById("kpiFlood").style.color = red? "var(--band-5)" : "";
+    document.getElementById("kpiFloodN").innerHTML = total?
+      `${open} open` + (red? ` · <b style="color:var(--band-5)">${red} ${cfg.redLabel}</b>` : "") +
+      ` · ${Object.keys(byN).length} neighbourhoods · daily feed` :
+      `none in the last 14 days`;
+    Object.entries(byN).forEach(([name,g])=>{
+      const hot = g.items.some(i=>cfg.redRe.test(i.service_description||""));
+      const m = L.marker([g.lat,g.lon],{icon:L.divIcon({className:"",
+        html:`<div style="min-width:18px;height:18px;border-radius:50%;background:${hot?"#d03b3b":"#b56a00"};
+          border:2px solid #fff;color:#fff;font:700 11px/15px system-ui;text-align:center;padding:0 3px">${g.items.length}</div>`,
+        iconSize:[18,18], iconAnchor:[9,9]})});
+      const lines = g.items.slice(0,8).map(i=>
+        `${(i.date_created||"").slice(5,10)} · ${i.service_description} <span style="color:#898781">(${i.request_status||"?"})</span>`).join("<br>");
+      m.bindPopup(`<b>311 ${cfg.label311} reports — ${name}</b> (last 14 days)<br>${lines}` +
+        (g.items.length>8? `<br>… ${g.items.length-8} more` : "") +
+        `<br><span style="color:#898781;font-size:10.5px">Marker = neighbourhood centroid, not an exact
+        address; 311 updates daily, not real-time. Source: 311 Requests (q7ua-agfg)</span>`,{maxWidth:300});
+      flood311Layer.addLayer(m);
+    });
+    applyContextFilter();
+    rerender(); // table's "311 · closures" column reads flood311List
+  }catch(e){ console.warn("311 layer unavailable", e); }
 }
 
-// ---------- ECCC radar animation ----------
-// GeoMet publishes a rolling ~3 h of RADAR_1KM_RRAI at 6-min steps (a 24 h loop is not
-// offered by the service). We read the time extent from GetCapabilities and step the WMS
-// TIME param; tiles cache after the first pass so the loop smooths out.
-const GEOMET = "https://geo.weather.gc.ca/geomet";
-let radarLayer=null, alertsLayer=null, lightningLayer=null;
-let radarFrames=[], radarIdx=0, radarTimer=null;
-async function initRadarFrames(){
-  try{
-    const xml = await fetch(GEOMET+"?service=WMS&version=1.3.0&request=GetCapabilities&layer=RADAR_1KM_RRAI").then(r=>r.text());
-    const m = xml.match(/<Dimension name="time"[^>]*>([^<]+)<\/Dimension>/);
-    if (!m) throw new Error("no time dimension");
-    const [start, end, step] = m[1].trim().split("/");
-    const stepMin = parseInt((step.match(/\d+/)||[6])[0], 10);
-    radarFrames = [];
-    for (let t = Date.parse(start); t <= Date.parse(end); t += stepMin*60000)
-      radarFrames.push(new Date(t).toISOString().split(".")[0]+"Z");
-    const sl = document.getElementById("radarSlider");
-    sl.max = radarFrames.length-1;
-    setRadarFrame(radarFrames.length-1); // newest first
-  }catch(e){
-    console.warn("radar time extent unavailable", e);
-    document.getElementById("radarTime").textContent = "latest";
-  }
+// (ECCC GeoMet radar/alerts/lightning map + its animation engine removed 2026-07-13 at
+//  user request — Windy.com below is the regional weather view; its own timeline plays
+//  the multi-day forecast animation)
+// Windy overlay switcher — constant buttons OUTSIDE the iframe (its own menu can't be
+// restyled); each click reloads the embed with a different overlay= parameter
+// forecast-animating overlays first; "Rain & thunder" is the default (matches the iframe src)
+const WINDY_OVERLAYS = [["Rain & thunder","thunder"],["Snow accum.","snowAccu"],["Wind","wind"],
+  ["Rain accum.","rainAccu"],["Temperature","temp"],["Clouds","clouds"],["Satellite","satellite"],
+  ["Radar (live only)","radar"]];
+let setWindyOverlay = null; // set below; also called by setTrackMode (snow mode → Snow accum.)
+{
+  const holder = document.getElementById("windyBtns");
+  const BASE = "font-size:13.5px;font-weight:700;padding:6px 14px";
+  const btnByKey = {};
+  const setActive = b => [...holder.children].forEach(x=>{
+    x.style.borderColor = x===b? "var(--seq-450)" : "";
+    x.style.background = x===b? "var(--band-0-wash)" : "";
+  });
+  setWindyOverlay = key => {
+    const f = document.getElementById("windyFrame");
+    // reloading the src also re-centers on Edmonton — panning never sticks
+    f.src = f.src.replace(/overlay=[^&]*/, "overlay="+key);
+    if (btnByKey[key]) setActive(btnByKey[key]);
+  };
+  WINDY_OVERLAYS.forEach(([label, key], i)=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label;
+    b.style.cssText = BASE;
+    b.addEventListener("click", ()=>setWindyOverlay(key));
+    btnByKey[key] = b;
+    holder.appendChild(b);
+    if (i===0) setActive(b);
+  });
+  // hard re-center: Windy's embed is interactive (its timeline needs clicks, so panning
+  // can't be disabled outright) — this snaps the view back to the pinned Edmonton center
+  const rc = document.createElement("button");
+  rc.type = "button"; rc.textContent = "⌖ Re-center Edmonton";
+  rc.style.cssText = BASE + ";border-style:dashed";
+  rc.addEventListener("click", ()=>{
+    const f = document.getElementById("windyFrame");
+    f.src = f.src; // same URL → full reload at the pinned coords
+  });
+  holder.appendChild(rc);
 }
-function setRadarFrame(i){
-  if (!radarFrames.length || !radarLayer) return;
-  radarIdx = (i+radarFrames.length) % radarFrames.length;
-  radarLayer.setParams({time: radarFrames[radarIdx]});
-  document.getElementById("radarSlider").value = radarIdx;
-  document.getElementById("radarTime").textContent =
-    new Date(radarFrames[radarIdx]).toLocaleTimeString("en-CA",
-      {timeZone:"America/Edmonton", hour:"2-digit", minute:"2-digit"}) + " MT";
-}
-function stopRadar(){
-  if (radarTimer){ clearInterval(radarTimer); radarTimer=null; }
-  document.getElementById("radarPlay").textContent = "▶ play";
-}
-document.getElementById("radarPlay").addEventListener("click", ()=>{
-  if (radarTimer){ stopRadar(); return; }
-  document.getElementById("radarPlay").textContent = "❚❚ pause";
-  radarTimer = setInterval(()=> setRadarFrame(radarIdx+1), 800);
-});
-document.getElementById("radarSlider").addEventListener("input",
-  e=>{ stopRadar(); setRadarFrame(+e.target.value); });
-// Windy embed loads only when the panel is opened — it is heavy and optional context
-document.getElementById("windyBox").addEventListener("toggle", function(){
-  const f = document.getElementById("windyFrame");
-  if (this.open && !f.src) f.src = f.dataset.src;
-});
 
 // District polygons (avbh-ga6n, City Plan Planning Districts) — the 15 named districts of
 // the Edmonton reference map (Central, Scona, Jasper Place, …). No computed-region join
@@ -367,7 +827,18 @@ function loadWards(){ // name kept for the initMap call; loads districts
       districtFeats = rows.map(w=>({type:"Feature", properties:{name:w.district_name}, geometry:w.geom}));
       districtGeoJSON = L.geoJSON({type:"FeatureCollection", features:districtFeats}, {
         style: f => districtStyle(f.properties.name),
-        onEachFeature: (f, lyr) => lyr.bindPopup(()=>districtPopup(f.properties), {maxWidth:320})
+        onEachFeature: (f, lyr) => {
+          // offset lifts the popup clear of the clicked spot so it doesn't cover the area
+          lyr.bindPopup(()=>districtPopup(f.properties), {maxWidth:320, offset:L.point(0,-22)});
+          lyr.on("popupopen", ()=>{
+            if (mapMode==="density" && densityBoundary==="district")
+              fill311PopupStats(neiFeats.filter(x=>x.properties.district===f.properties.name)
+                .map(x=>x.properties.name));
+          });
+          // clicking the polygon selects the district (vivid) and fades the rest —
+          // same path as the heatmap row labels; click again to clear
+          lyr.on("click", ()=>toggleDistrictSelection(f.properties.name));
+        }
       });
       wardLayer.addLayer(districtGeoJSON);
       if (lastRows) render(lastRows); // re-render so stations pick up district assignment
@@ -399,30 +870,514 @@ function districtOf(lat, lon){
   return best? "near "+best[1] : null;
 }
 function districtStations(name){ return lastStations.filter(s=>s.district===name); }
+// selection highlight: when a district is chosen (filter bar or heatmap row click), it keeps
+// full color with an accent border and every other polygon fades back — muted but NOT flat
+// gray (user preference): each keeps its OWN fill color at ~1/3 opacity, so the citywide
+// pattern stays faintly readable behind the selection
+const selectedDistrict = () => (document.getElementById("fDistrict").value||"").replace(/^near /,"");
+const muted = style => ({...style, color:"#b9b8b0", weight:.7,
+  fillOpacity: Math.max(.12, style.fillOpacity*.35)});
+const withSelection = (name, style) => {
+  const fD = selectedDistrict();
+  if (!fD) return style;
+  return name===fD ? {...style, color:"#2a78d6", weight:2.5} : muted(style);
+};
 function districtStyle(name){
+  if (mapMode==="density" && densityBoundary==="district")
+    return withSelection(name, {color:"#898781", weight:1,
+            fillColor: densityColor(densityRate((densityByDistrict||{})[name]||0), densityMax),
+            fillOpacity:.68});
   const inD = districtStations(name).filter(s=>s.hasReading);
   const worst = inD.length? Math.max(...inD.map(s=>s.rating)) : null;
-  return {color:"#898781", weight:1, fillColor: worst===null? NO_GAUGE_FILL : rampColor(worst),
-          fillOpacity:.55};
+  return withSelection(name, {color:"#898781", weight:1,
+          fillColor: worst===null? NO_GAUGE_FILL : rampColor(worst), fillOpacity:.55});
 }
 function restyleWards(){ if (districtGeoJSON) districtGeoJSON.setStyle(f => districtStyle(f.properties.name)); }
 function districtPopup(props){
+  if (mapMode==="density" && densityBoundary==="district"){
+    const v = (densityByDistrict||{})[props.name] || 0;
+    const nNei = neiFeats.filter(f=>f.properties.district===props.name).length;
+    return `<b>${props.name}</b><br>
+      <b>${v}</b> weather 311 reports<br>
+      <span style="color:#52514e" id="p311cats">loading top categories…</span><br>
+      <span style="color:#898781;font-size:11px">Summed from ${nNei} neighbourhood(s) in this district.</span>`;
+  }
   const sts = districtStations(props.name);
-  if (!sts.length) return `<b>${props.name}</b><br>⚠ No rain gauge in this district — <b>no visibility here</b>, not calm. Judge from adjacent gauges and field reports.`;
+  if (!sts.length) return `<b>${props.name}</b><br>⚠ No rain gauge in this district — <b>no visibility here</b>, not calm. Judge from adjacent gauges and field reports.${crewContext(props.name)}`;
   const lines = sts.map(s=> s.hasReading?
       `${s.station}: <b>${s.mm.toFixed(1)} mm</b> · rating ${s.rating} ${bandOf(s.rating).name}` :
       `${s.station}: ⚠ no usable reading`).join("<br>");
-  return `<b>${props.name}</b> — ${sts.length} gauge(s)<br>${lines}<br>
+  return `<b>${props.name}</b> — ${sts.length} gauge(s)<br>${lines}
+    ${crewContext(props.name)}<br>
     <span style="color:#898781;font-size:11px">Fill = worst gauge; readings apply at gauge points only.</span>`;
+}
+
+// ---------- 311 report density (q7ua-agfg) — a SEPARATE fill mode from live storm severity,
+// for "where do people report issues most" over a user-chosen period. Neighbourhood polygons
+// (65fr-66s6, 407 features) are the join key: 311 rows carry a "neighbourhood" name but no
+// district, so district-level density is a rollup of neighbourhood counts via each polygon's
+// own "district" field (matches avbh-ga6n's district_name exactly — verified against the live
+// catalog). The 311 dataset's earliest row is 2026-07-14 confirmed date_created min 2023-01-01 —
+// a 10-year window doesn't exist in the source, so period options are capped at what's real.
+const DATA_311_START = "2023-01-01T00:00:00.000";
+const DATA_311_START_DATE = "2023-01-01"; // <input type=date> min — confirmed live min(date_created)
+const todayLocalDate = () => { // Edmonton-local yyyy-mm-dd, for the date pickers' max and default "to"
+  const p = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Edmonton", year:"numeric", month:"2-digit", day:"2-digit"}).formatToParts(new Date());
+  const g = k => p.find(x=>x.type===k).value;
+  return `${g("year")}-${g("month")}-${g("day")}`;
+};
+// density + heatmap count WEATHER-RELATED 311 categories only (user request — all-category
+// counts dwarfed the drainage-specific markers and read as inconsistent). Category list built
+// from the live distinct service_description values (word-anchored: plain '%ICY%'/'%ICE%'
+// match "Policy"/"License" — the documented trap): flood/ponding/drainage, snow/windrow/
+// plow/blading, icy/ice conditions, extreme weather. Both seasons stay included so historical
+// review can compare summer vs winter.
+const WEATHER311_WHERE = "(upper(service_description) LIKE '%FLOOD%'" +
+  " OR upper(service_description) LIKE '%PONDING%'" +
+  " OR upper(service_description) LIKE '%DRAINAGE%'" +
+  " OR upper(service_description) LIKE '%SNOW%'" +
+  " OR upper(service_description) LIKE 'ICY%'" +
+  " OR upper(service_description) LIKE '%ICY CONDITIONS%'" +
+  " OR upper(service_description) LIKE '%ICE CONDITIONS%'" +
+  " OR upper(service_description) LIKE '%WINDROW%'" +
+  " OR upper(service_description) LIKE '%PLOW%'" +
+  " OR upper(service_description) LIKE '%BLADING%'" +
+  " OR upper(service_description) LIKE '%EXTREME WEATHER%')";
+let mapMode = "severity", densityBoundary = "district";
+let densityFrom = "", densityTo = ""; // yyyy-mm-dd, user-editable date range (presets or custom)
+let neiFeats = [], neiLoaded = false, neiGeoJSON = null;
+let densityByNei = {}, densityByDistrict = {}, densityMax = 1;
+const titleCaseNei = s => s.replace(/\w\S*/g, t => t[0]+t.slice(1).toLowerCase());
+// continuous yellow -> orange -> red -> deep magenta ramp (density is a rate, not a fixed band)
+const DENSITY_STOPS = [[255,242,204],[253,187,45],[221,74,44],[132,17,86]];
+// STANDARDIZE the fill: color by a rate (reports per 30 days), not the raw count. A raw count
+// makes a 2-year range look uniformly "worse" than a 1-week range purely because it accumulated
+// longer, which isn't a real density signal — dividing by the span the user actually picked
+// makes areas comparable across different Quick-range/custom choices.
+function densityDays(){
+  const f = new Date(densityFrom+"T00:00:00"), t = new Date(densityTo+"T00:00:00");
+  return Math.max(1, Math.round((t-f)/86400000)+1); // inclusive of both endpoints
+}
+function densityRate(v){ return v / densityDays() * 30; }
+function densityColor(rate, max){
+  if (!rate) return "#eef0ea";
+  const t = Math.min(1, rate/max), seg = t*(DENSITY_STOPS.length-1);
+  const i = Math.min(DENSITY_STOPS.length-2, Math.floor(seg)), f = seg-i;
+  const c = DENSITY_STOPS[i].map((s,k)=>Math.round(s+(DENSITY_STOPS[i+1][k]-s)*f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function updateDensityLegend(){
+  const el = document.getElementById("densityLegend");
+  const totalEl = document.getElementById("densityTotal");
+  if (!el) return;
+  if (mapMode!=="density"){ el.innerHTML=""; if (totalEl) totalEl.textContent=""; return; }
+  const stops = DENSITY_STOPS.map(c=>`rgb(${c[0]},${c[1]},${c[2]})`).join(",");
+  el.innerHTML = `0<span class="bar" style="background:linear-gradient(to right,${stops})"></span>${densityMax.toFixed(1)} per 30 days`;
+  // headline total — always summed from whichever boundary's counts are actually on the map
+  // right now, so it can never drift from what the fill/legend shows for the current picker state
+  if (totalEl){
+    const src = densityBoundary==="neighbourhood"? densityByNei : densityByDistrict;
+    const total = Object.values(src).reduce((a,b)=>a+b, 0);
+    totalEl.innerHTML = `<b>${total.toLocaleString()}</b> reports · ${densityRangeLabel()}`;
+  }
+}
+// clicking a neighbourhood polygon selects ONLY that neighbourhood (user request) — it goes
+// vivid with the blue accent border and every other neighbourhood fades; this is a visual
+// spotlight, finer than the district filter (which still drives table/heatmap zoom)
+let selectedNei = null;
+function toggleNeiSelection(name){
+  selectedNei = selectedNei===name? null : name;
+  if (neiGeoJSON) neiGeoJSON.setStyle(f=>neiStyle(f.properties.name, f.properties.district));
+}
+function neiStyle(name, district){
+  const v = (densityByNei||{})[name] || 0;
+  const base = {color:"#c9c7bd", weight:.6, fillColor: densityColor(densityRate(v), densityMax),
+                fillOpacity:.72};
+  if (selectedNei) // neighbourhood spotlight takes precedence over district-level fading
+    return name===selectedNei? {...base, color:"#2a78d6", weight:2.5} : muted(base);
+  const fD = selectedDistrict();
+  if (fD && district!==fD) return muted(base); // keeps its own color, faded — not flat gray
+  return fD? {...base, color:"#2a78d6", weight:1} : base;
+}
+// concise popup (user request): count leads, no date range (it's already shown above the
+// map), and the pace line says plainly what drives the fill color
+function neiPopup(props){
+  const v = (densityByNei||{})[props.name] || 0;
+  return `<b>${titleCaseNei(props.name)}</b>${props.district? " — "+props.district : ""}<br>
+    <b>${v}</b> weather 311 reports<br>
+    <span style="color:#52514e" id="p311cats">loading top categories…</span>`;
+}
+// popup drill-down: the top-2 weather-related categories for the clicked area over the
+// selected date range. Fetched on popup open (one small SoQL aggregate), cached per
+// area+range so reopening is instant.
+const p311Cache = new Map();
+async function fill311PopupStats(neiNames){
+  const catEl = () => document.getElementById("p311cats");
+  if (!neiNames.length){ if (catEl()) catEl().textContent = ""; return; }
+  const inList = "neighbourhood in(" + neiNames.map(n=>`'${String(n).replace(/'/g,"''")}'`).join(",") + ")";
+  const range = `date_created>='${densityCutoff()}' AND date_created<'${densityUntil()}'`;
+  const key = neiNames.join("|") + "§" + densityCutoff() + "§" + densityUntil();
+  let stats = p311Cache.get(key);
+  if (!stats){
+    try{
+      const cats = await fetch("https://data.edmonton.ca/resource/q7ua-agfg.json?$select=service_description,count(*) as n&$where=" +
+          encodeURIComponent(`${range} AND ${inList} AND ${WEATHER311_WHERE}`) +
+          "&$group=service_description&$order=n DESC&$limit=2").then(r=>r.json());
+      stats = {cats: cats.map(c=>({d:c.service_description, n:+c.n}))};
+      p311Cache.set(key, stats);
+    }catch(e){ console.warn("311 popup stats unavailable", e); stats = null; }
+  }
+  if (!catEl()) return; // popup already closed
+  if (!stats){ catEl().textContent = "top categories unavailable"; return; }
+  catEl().innerHTML = stats.cats.length?
+    "Top weather: " + stats.cats.map(c=>`${c.d} (<b>${c.n}</b>)`).join(" · ") :
+    "no weather-related reports in this range";
+}
+function loadNeighbourhoods(cb){
+  if (neiLoaded){ cb&&cb(); return; }
+  fetch("https://data.edmonton.ca/resource/65fr-66s6.json?$select=name,district,simplify_preserve_topology(geometry_multipolygon,0.0008) as geom&$limit=500")
+    .then(r=>r.json()).then(rows=>{
+      neiFeats = rows.filter(w=>w.geom).map(w=>({type:"Feature", properties:{name:w.name, district:w.district}, geometry:w.geom}));
+      neiLoaded = true;
+    }).catch(e=>console.warn("neighbourhood boundary layer unavailable", e))
+    .finally(()=>cb&&cb());
+}
+function densityRangeLabel(){
+  const fmt = s => new Date(s+"T00:00:00").toLocaleDateString("en-CA", {month:"short", day:"numeric", year:"numeric"});
+  return `${fmt(densityFrom)} – ${fmt(densityTo)}`;
+}
+// Quick range → From/To: days-back presets, or null for "all available since Jan 2023"
+const DENSITY_PRESETS = {"7d":7, "30d":30, "90d":90, "365d":365, "730d":730, "all":null};
+function applyDensityPreset(key){
+  const today = todayLocalDate();
+  let from;
+  if (DENSITY_PRESETS[key]==null) from = DATA_311_START_DATE;
+  else {
+    const d = new Date(today+"T00:00:00"); d.setDate(d.getDate()-DENSITY_PRESETS[key]);
+    from = d.toISOString().slice(0,10);
+    if (from < DATA_311_START_DATE) from = DATA_311_START_DATE;
+  }
+  densityFrom = from; densityTo = today;
+  document.getElementById("densityFrom").value = from;
+  document.getElementById("densityTo").value = today;
+}
+function initDensityRange(){
+  const today = todayLocalDate();
+  const fEl = document.getElementById("densityFrom"), tEl = document.getElementById("densityTo");
+  fEl.min = DATA_311_START_DATE; fEl.max = today;
+  tEl.min = DATA_311_START_DATE; tEl.max = today;
+  applyDensityPreset("365d"); // matches the preset select's default "Past year" option
+}
+function densityCutoff(){ return (densityFrom || DATA_311_START_DATE) + "T00:00:00.000"; }
+function densityUntil(){ // exclusive upper bound = start of the day AFTER "to", so "to" is inclusive
+  const d = new Date((densityTo || todayLocalDate())+"T00:00:00");
+  d.setDate(d.getDate()+1);
+  return d.toISOString().split(".")[0];
+}
+// requests race when From/To change in quick succession (each edit fires its own fetch);
+// a generation counter drops any response that isn't from the most recently issued request
+// so a slower, stale wide-range query can never overwrite a faster, narrower one that supersedes it
+let densityReqId = 0;
+function loadDensity(){
+  const myReqId = ++densityReqId;
+  const el = document.getElementById("densityLegend");
+  if (el) el.innerHTML = "loading…";
+  const url = "https://data.edmonton.ca/resource/q7ua-agfg.json?$select=neighbourhood,count(*) as n"
+    + "&$where=" + encodeURIComponent(`date_created>='${densityCutoff()}' AND date_created<'${densityUntil()}' AND ${WEATHER311_WHERE}`)
+    + "&$group=neighbourhood&$limit=1000";
+  fetch(url).then(r=>r.json()).then(rows=>{
+    if (myReqId !== densityReqId) return; // a newer request has since been issued — discard
+    densityByNei = {};
+    rows.forEach(r=>{ if (r.neighbourhood) densityByNei[r.neighbourhood] = +r.n || 0; });
+    densityByDistrict = {};
+    neiFeats.forEach(f=>{
+      const n = densityByNei[f.properties.name] || 0, d = f.properties.district;
+      if (d) densityByDistrict[d] = (densityByDistrict[d]||0) + n;
+    });
+    updateBoundaryLayer();
+  }).catch(e=>{
+    if (myReqId !== densityReqId) return;
+    console.warn("311 density query failed", e);
+    densityByNei = {}; densityByDistrict = {};
+    if (el) el.innerHTML = "density query failed";
+  });
+}
+function updateBoundaryLayer(){
+  if (!wardLayer) return;
+  densityMax = Math.max(.1, ...Object.values(mapMode==="density" && densityBoundary==="neighbourhood"
+    ? densityByNei : densityByDistrict).map(densityRate));
+  const showNei = mapMode==="density" && densityBoundary==="neighbourhood";
+  if (showNei){
+    if (districtGeoJSON && wardLayer.hasLayer(districtGeoJSON)) wardLayer.removeLayer(districtGeoJSON);
+    if (!neiGeoJSON){
+      neiGeoJSON = L.geoJSON({type:"FeatureCollection", features:neiFeats}, {
+        style: f => neiStyle(f.properties.name, f.properties.district),
+        onEachFeature: (f, lyr) => {
+          lyr.bindPopup(()=>neiPopup(f.properties), {maxWidth:280, offset:L.point(0,-22)});
+          lyr.on("popupopen", ()=>fill311PopupStats([f.properties.name]));
+          // spotlight just this neighbourhood — NOT its whole district (user request)
+          lyr.on("click", ()=>toggleNeiSelection(f.properties.name));
+        }
+      });
+    } else neiGeoJSON.setStyle(f=>neiStyle(f.properties.name, f.properties.district));
+    if (!wardLayer.hasLayer(neiGeoJSON)) wardLayer.addLayer(neiGeoJSON);
+  } else {
+    if (neiGeoJSON && wardLayer.hasLayer(neiGeoJSON)) wardLayer.removeLayer(neiGeoJSON);
+    if (districtGeoJSON && !wardLayer.hasLayer(districtGeoJSON)) wardLayer.addLayer(districtGeoJSON);
+    restyleWards();
+  }
+  updateDensityLegend();
+}
+initDensityRange();
+// segmented buttons (replaced the dropdowns): one click applies immediately
+const setSeg = (wrapId, v) => document.querySelectorAll("#"+wrapId+" .segbtn")
+  .forEach(b => b.classList.toggle("active", b.dataset.v===v));
+function setMapMode(v){
+  mapMode = v;
+  setSeg("mapMetricBtns", v);
+  // range/boundary controls stay visible in both modes — they also drive the historical heatmap
+  document.getElementById("wardNoteSeverity").style.display = mapMode==="density"? "none":"block";
+  document.getElementById("wardNoteDensity").style.display = mapMode==="density"? "block":"none";
+  if (mapMode==="density") loadNeighbourhoods(loadDensity);
+  else updateBoundaryLayer();
+}
+document.querySelectorAll("#mapMetricBtns .segbtn").forEach(b =>
+  b.addEventListener("click", ()=>setMapMode(b.dataset.v)));
+// touching the range/boundary controls means the user is working in 311-density terms — the
+// map follows into density mode so these filters visibly apply to map + heatmap together
+// (the live-severity map and gauge table cannot be date-filtered: the feed is a snapshot)
+function syncDensityMap(){
+  if (mapMode!=="density") setMapMode("density"); // loads density for the new range itself
+  else loadDensity();
+}
+document.getElementById("densityPresetSel").addEventListener("change", e=>{
+  if (e.target.value==="custom") return; // user is about to edit From/To by hand
+  applyDensityPreset(e.target.value);
+  syncDensityMap();
+  loadHeatmap();
+});
+document.getElementById("densityFrom").addEventListener("change", e=>{
+  densityFrom = e.target.value;
+  if (densityFrom > densityTo){ densityTo = densityFrom; document.getElementById("densityTo").value = densityTo; }
+  document.getElementById("densityPresetSel").value = "custom";
+  syncDensityMap();
+  loadHeatmap();
+});
+document.getElementById("densityTo").addEventListener("change", e=>{
+  densityTo = e.target.value;
+  if (densityFrom > densityTo){ densityFrom = densityTo; document.getElementById("densityFrom").value = densityFrom; }
+  document.getElementById("densityPresetSel").value = "custom";
+  syncDensityMap();
+  loadHeatmap();
+});
+// ---------- area search: type-ahead over 15 districts + 407 neighbourhoods ----------
+// Selecting zooms the map to the area; if its polygon layer is currently displayed the real
+// popup opens, otherwise a temporary dashed outline + name popup shows (works in every mode).
+const areaSearchEl = document.getElementById("areaSearch");
+const areaSuggestEl = document.getElementById("areaSuggest");
+let sgIdx = -1;
+function areaCandidates(q){
+  q = q.trim().toUpperCase();
+  if (q.length < 2) return [];
+  const ds = districtFeats.filter(f=>f.properties.name.toUpperCase().includes(q))
+    .map(f=>({kind:"District", label:f.properties.name, f}));
+  const ns = neiFeats.filter(f=>f.properties.name.toUpperCase().includes(q))
+    .map(f=>({kind:"Neighbourhood", label:titleCaseNei(f.properties.name),
+              raw:f.properties.name, district:f.properties.district, f}));
+  return [...ds, ...ns].slice(0,12);
+}
+function hideSuggest(){ areaSuggestEl.style.display="none"; areaSuggestEl.innerHTML=""; sgIdx=-1; }
+function renderSuggest(){
+  const list = areaCandidates(areaSearchEl.value);
+  if (!list.length){ hideSuggest(); return; }
+  areaSuggestEl.innerHTML = list.map((c,i)=>
+    `<button type="button" class="sg" data-i="${i}">${c.label}<span class="tp">${c.kind}${c.district? " · "+c.district:""}</span></button>`).join("");
+  areaSuggestEl.style.display="block"; sgIdx=-1;
+  areaSuggestEl._list = list;
+  [...areaSuggestEl.children].forEach(b=>b.addEventListener("click", ()=>gotoArea(list[+b.dataset.i])));
+}
+function flashOutline(feature, html){
+  const o = L.geoJSON(feature, {style:{color:"#2a78d6", weight:2.5, dashArray:"6 4", fill:false}}).addTo(map);
+  L.popup({offset:L.point(0,-8)}).setLatLng(o.getBounds().getCenter()).setContent(html).openOn(map);
+  setTimeout(()=>{ if (map.hasLayer(o)) map.removeLayer(o); }, 8000);
+}
+function gotoArea(c){
+  hideSuggest();
+  areaSearchEl.value = c.label;
+  const b = L.geoJSON(c.f.geometry).getBounds();
+  // animate:false — a deterministic jump: throttled/background renderers can leave Leaflet's
+  // animated zoom waiting on a transitionend that never fires, silently reverting the view
+  map.fitBounds(b, {maxZoom: c.kind==="District"? 12:14, padding:[24,24], animate:false});
+  let target = null;
+  if (c.kind==="District" && districtGeoJSON && wardLayer.hasLayer(districtGeoJSON))
+    districtGeoJSON.eachLayer(l=>{ if (l.feature.properties.name===c.label) target=l; });
+  if (c.kind==="Neighbourhood" && neiGeoJSON && wardLayer.hasLayer(neiGeoJSON))
+    neiGeoJSON.eachLayer(l=>{ if (l.feature.properties.name===c.raw) target=l; });
+  if (target) target.openPopup();
+  else flashOutline(c.f, `<b>${c.label}</b>${c.district? " — "+c.district : ` — district`}`);
+}
+areaSearchEl.addEventListener("focus", ()=>loadNeighbourhoods(renderSuggest)); // 407 nei polygons lazy-load once
+areaSearchEl.addEventListener("input", renderSuggest);
+areaSearchEl.addEventListener("keydown", e=>{
+  const list = areaSuggestEl._list || [];
+  if (e.key==="Escape"){ hideSuggest(); return; }
+  if (!list.length) return;
+  if (e.key==="ArrowDown"){ e.preventDefault(); sgIdx = Math.min(sgIdx+1, list.length-1); }
+  else if (e.key==="ArrowUp"){ e.preventDefault(); sgIdx = Math.max(sgIdx-1, 0); }
+  else if (e.key==="Enter"){ e.preventDefault(); gotoArea(list[Math.max(sgIdx,0)]); return; }
+  else return;
+  [...areaSuggestEl.children].forEach((b,i)=>b.classList.toggle("hi", i===sgIdx));
+});
+document.addEventListener("click", e=>{ if (!e.target.closest(".searchwrap")) hideSuggest(); });
+
+document.querySelectorAll("#boundaryBtns .segbtn").forEach(b =>
+  b.addEventListener("click", ()=>{
+    densityBoundary = b.dataset.v;
+    setSeg("boundaryBtns", densityBoundary);
+    if (mapMode!=="density") setMapMode("density");
+    else updateBoundaryLayer();
+    renderHeatmap(); // same data, different row grouping
+  }));
+// heatmap row label click → the shared District filter (table + map markers + heatmap zoom);
+// clicking the already-active district clears it back to citywide
+// one selection path for heatmap labels AND map polygon clicks: set the shared District
+// filter (table + markers + heatmap zoom + vivid-vs-faded polygon styling all follow);
+// clicking the already-selected district clears it
+function toggleDistrictSelection(d){
+  if (!d) return;
+  const f = document.getElementById("fDistrict");
+  const has = [...f.options].some(o=>o.value===d);
+  f.value = (f.value===d || !has)? "" : d;
+  f.dispatchEvent(new Event("change"));
+}
+document.getElementById("hmGrid").addEventListener("click", e=>{
+  const lab = e.target.closest(".hm-lab");
+  if (lab && lab.dataset.d) toggleDistrictSelection(lab.dataset.d);
+});
+
+// ---------- historical heatmap: 311 reports per month by district/neighbourhood ----------
+// One SoQL fetch per date range (group by neighbourhood + month); boundary/district changes
+// re-render client-side from the same rows. Severity-by-month is NOT offered here because the
+// gauge feed is a snapshot with no published history — 311 volume is the month-by-month signal.
+let hmData = null, hmReqId = 0; // [{nei, ym:"2025-07", n}]
+function hmMonths(){
+  const out = [];
+  const d = new Date(densityFrom.slice(0,7)+"-01T00:00:00");
+  const end = new Date(densityTo.slice(0,7)+"-01T00:00:00");
+  while (d <= end){ out.push(d.toISOString().slice(0,7)); d.setMonth(d.getMonth()+1); }
+  return out;
+}
+function loadHeatmap(){
+  const my = ++hmReqId;
+  const st = document.getElementById("hmStatus");
+  st.textContent = "loading heatmap…";
+  const url = "https://data.edmonton.ca/resource/q7ua-agfg.json?$select=neighbourhood,date_trunc_ym(date_created) as ym,count(*) as n"
+    + "&$where=" + encodeURIComponent(`date_created>='${densityCutoff()}' AND date_created<'${densityUntil()}' AND ${WEATHER311_WHERE}`)
+    + "&$group=neighbourhood,ym&$limit=50000";
+  fetch(url).then(r=>r.json()).then(rows=>{
+    if (my !== hmReqId) return; // superseded by a newer range — discard
+    hmData = rows.filter(r=>r.neighbourhood && r.ym)
+      .map(r=>({nei:r.neighbourhood, ym:r.ym.slice(0,7), n:+r.n||0}));
+    loadNeighbourhoods(renderHeatmap); // rollup/filter needs the nei→district mapping
+  }).catch(e=>{ if (my===hmReqId){ console.warn("heatmap query failed", e);
+    st.textContent = "heatmap unavailable — 311 query failed"; } });
+}
+function renderHeatmap(){
+  const grid = document.getElementById("hmGrid"), st = document.getElementById("hmStatus");
+  if (!hmData || !grid) return;
+  const months = hmMonths();
+  const nei2d = {}; neiFeats.forEach(f=>{ nei2d[f.properties.name] = f.properties.district; });
+  const fD = (document.getElementById("fDistrict").value||"").replace(/^near /,"");
+  const cells = {}, totals = {};
+  hmData.forEach(r=>{
+    const d = nei2d[r.nei];
+    if (fD && d!==fD) return;            // District filter zooms the rows
+    const key = densityBoundary==="district" ? d : r.nei;
+    if (!key) return;                     // neighbourhood with no district mapping, in rollup mode
+    (cells[key] ??= {})[r.ym] = (cells[key][r.ym]||0) + r.n;
+    totals[key] = (totals[key]||0) + r.n;
+  });
+  let keys = Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
+  const CAP = 30; let capped = 0; // 407 neighbourhood rows are unreadable — cap unless zoomed
+  if (densityBoundary==="neighbourhood" && !fD && keys.length>CAP){ capped = keys.length-CAP; keys = keys.slice(0,CAP); }
+  const max = Math.max(1, ...keys.flatMap(k=>months.map(m=>cells[k][m]||0)));
+  const lab = k => densityBoundary==="district"? k : titleCaseNei(k);
+  const mLab = m => new Date(m+"-01T00:00:00").toLocaleDateString("en-CA",{month:"short", year:"2-digit"});
+  // FIXED cell size (not 1fr): a 2-month range must not stretch into giant slabs — the grid
+  // keeps the same cell footprint at any range and scrolls horizontally when months overflow
+  grid.style.gridTemplateColumns = `170px repeat(${months.length}, 34px)`;
+  let html = `<div></div>` + months.map(m=>`<div class="hm-x">${mLab(m)}</div>`).join("");
+  keys.forEach(k=>{
+    const rowD = densityBoundary==="district"? k : (nei2d[k]||"");
+    html += `<div class="hm-lab${fD && rowD===fD? " active":""}" data-d="${rowD}"
+      title="${lab(k)} — ${totals[k].toLocaleString()} total · click to filter the map & table to ${rowD||"this district"}">${lab(k)}</div>`;
+    html += months.map(m=>{
+      const v = cells[k][m]||0;
+      return `<div class="hm-cell" style="background:${v? densityColor(v,max) : "var(--grid)"}"
+        title="${lab(k)} · ${mLab(m)}: ${v.toLocaleString()} report(s)"></div>`;
+    }).join("");
+  });
+  grid.innerHTML = html;
+  st.innerHTML = `<b>${keys.length}</b> ${densityBoundary==="district"?"district":"neighbourhood"} row(s)
+    × <b>${months.length}</b> month(s) · ${densityRangeLabel()}${fD? ` · district: <b>${fD}</b>`:""}
+    ${capped? ` · showing top ${CAP} by total (${capped} more — pick a district in the filter bar to zoom)`:""}
+    · darkest cell = ${max.toLocaleString()} reports/month`;
+}
+loadHeatmap();
+
+// crew task card: what a dispatched crew is driving into — computed at popup-open time
+// never run before the polygons exist — districtOf would return null and the cache
+// would freeze every count at zero (the old "! 0 closures everywhere" bug)
+function assignDistrict(list){
+  if (!districtFeats.length) return;
+  list.forEach(p=>{ if (p.district===undefined) p.district = districtOf(p.lat,p.lon); });
+}
+function crewContext(name){
+  if (!districtFeats.length) return "";
+  const bits = [];
+  if (pumpsList){ assignDistrict(pumpsList);
+    bits.push(`${pumpsList.filter(p=>p.district===name).length} pump station(s)`); }
+  if (closuresList.length){ assignDistrict(closuresList);
+    const cl = closuresList.filter(c=>c.district===name), em = cl.filter(c=>c.emerg).length;
+    bits.push(`${cl.length} closure(s)${em? ` (<b style="color:#d03b3b">${em} EMERGENCY</b>)`:""}`); }
+  if (flood311List.length){ assignDistrict(flood311List);
+    const n = flood311List.filter(f=>f.district===name).reduce((a,f)=>a+f.n,0);
+    if (n) bits.push(`<b style="color:#b56a00">${n} × 311 ${trackCfg().label311} report(s), 14 d</b>`); }
+  const sts = districtStations(name).filter(s=>s.lat!=null);
+  let ref = sts.length? [sts.reduce((a,s)=>a+s.lat,0)/sts.length, sts.reduce((a,s)=>a+s.lon,0)/sts.length] : null;
+  if (!ref){ const f = districtFeats.find(f=>f.properties.name===name);
+    if (f){ const r = f.geometry.coordinates[0][0];
+      ref = [r.reduce((a,p)=>a+p[1],0)/r.length, r.reduce((a,p)=>a+p[0],0)/r.length]; } }
+  if (ref && CAMERAS.length){
+    const near = CAMERAS.reduce((m,c)=>{ const d2=((c.lat-ref[0])*111)**2+((c.lon-ref[1])*66)**2;
+      return !m||d2<m.d2? {d2,c}:m; }, null);
+    bits.push(`nearest camera: ${near.c.loc} (~${Math.sqrt(near.d2).toFixed(0)} km)`);
+  }
+  return bits.length? `<br><span style="color:#52514e;font-size:11.5px"><b>Crew context:</b> ${bits.join(" · ")} — toggle the map layers for exact locations.</span>` : "";
 }
 
 // ---------- context layers (companion open datasets) ----------
 // Storm/combined pump stations (yhez-gf32) — static infrastructure; the rating-4 action
 // is "pump checks", so crews need to see which pumps sit near hot gauges
+let pumpsList = null; // kept for the "pump stations to check" tile (district computed lazily)
+function updatePumpTile(withReading){
+  const elV = document.getElementById("kpiPumps"), elN = document.getElementById("kpiPumpsN");
+  if (!pumpsList || !districtFeats.length){ elV.textContent="–"; elN.textContent="loading…"; return; }
+  const hotD = [...new Set(withReading.filter(s=>s.rating>=4 && s.district).map(s=>s.district))];
+  if (!hotD.length){ elV.textContent="0";
+    elN.textContent=`no district at Dispatch or worse`; return; }
+  pumpsList.forEach(p=>{ if (p.district===undefined) p.district = districtOf(p.lat,p.lon); });
+  const inHot = pumpsList.filter(p=>hotD.includes(p.district));
+  elV.textContent = inHot.length;
+  elN.textContent = `in ${hotD.length} hot district(s)`;
+}
 async function loadPumps(){
   if (!pumpLayer) return;
   try{
     const rows = await fetch("https://data.edmonton.ca/resource/yhez-gf32.json?$where=type in('STORM','COMBINED')&$limit=200").then(r=>r.json());
+    pumpsList = rows.map(p=>({lat:parseFloat(p.latitude), lon:parseFloat(p.longitude)}))
+                    .filter(p=>Number.isFinite(p.lat));
+    rerender(); // tile can now be computed
     rows.forEach(p=>{
       const lat=parseFloat(p.latitude), lon=parseFloat(p.longitude);
       if (!Number.isFinite(lat)) return;
@@ -432,11 +1387,20 @@ async function loadPumps(){
       m.bindPopup(`<b>Pump station</b> (${p.type})<br>${p.road_name||""}${p.neighbourhood_name? " · "+p.neighbourhood_name:""}`);
       pumpLayer.addLayer(m);
     });
+    applyContextFilter();
   }catch(e){ console.warn("pump layer unavailable", e); }
 }
 // Live traffic disruptions (k4tx-5k8p) — closures already in effect change where crews
 // and barricades can go; refreshed on every load cycle
-let lastEmergDisruptions = 0;
+let lastEmergDisruptions = 0, lastClosureCount = null;
+function updateClosureTile(){
+  const elV = document.getElementById("kpiClosures"), elN = document.getElementById("kpiClosuresN");
+  if (lastClosureCount===null){ elV.textContent="–"; elN.textContent="loading…"; return; }
+  // emergencies lead (the number a supervisor acts on); total demoted to the line below
+  elV.textContent = lastEmergDisruptions? `${lastEmergDisruptions} EMERGENCY` : "0";
+  elV.style.color = lastEmergDisruptions? "var(--band-5)" : "";
+  elN.textContent = `${lastClosureCount} total in effect`;
+}
 async function loadClosures(){
   if (!closureLayer) return;
   try{
@@ -446,11 +1410,15 @@ async function loadClosures(){
     const emergNow = rows.filter(d=>d.status==="Emergency").length;
     if (emergNow !== lastEmergDisruptions){ lastEmergDisruptions = emergNow; rerender(); }
     // only what changes a barricade/dispatch route: full closures + emergencies, in effect now
-    rows.filter(d => d.point && d.point.coordinates &&
+    const shown = rows.filter(d => d.point && d.point.coordinates &&
         (d.status==="Emergency" || d.impact==="Total Closure") &&
         (!d.start_date || Date.parse(d.start_date) <= now) &&
-        (!d.finish_date || Date.parse(d.finish_date) >= now - 24*3600*1000))
-      .forEach(d=>{
+        (!d.finish_date || Date.parse(d.finish_date) >= now - 24*3600*1000));
+    lastClosureCount = shown.length;
+    updateClosureTile();
+    closuresList = shown.map(d=>({lat:d.point.coordinates[1], lon:d.point.coordinates[0],
+      emerg:d.status==="Emergency"})); // fresh objects → district re-derived on next popup
+    shown.forEach(d=>{
         const [lon,lat] = d.point.coordinates;
         const emerg = d.status==="Emergency";
         const m = L.marker([lat,lon],{icon: L.divIcon({className:"",
@@ -463,6 +1431,8 @@ async function loadClosures(){
           <span style="color:#898781">status: ${d.status} · until ${d.finish_date? d.finish_date.slice(0,10):"?"} · source: Traffic Disruptions (k4tx-5k8p)</span>`,{maxWidth:300});
         closureLayer.addLayer(m);
       });
+    applyContextFilter();
+    rerender(); // the table's "311 · closures" column reads closuresList — refresh it now
   }catch(e){ console.warn("closure layer unavailable", e); }
 }
 
@@ -565,18 +1535,46 @@ function stationChart(buf, station){
     <div style="color:#898781;font-size:10.5px">24h total, mm — session data: ${pts.length} samples over ${mins} min (not official history)</div>
   </div>`;
 }
+
+// per-district 311-flood / closure counts for the table's context column (same
+// point-in-polygon assignment the crew-context card uses)
+function districtCtx(district){
+  if (!district || !districtFeats.length) return null;
+  const base = district.replace(/^near /,"");
+  if (flood311List.length) assignDistrict(flood311List);
+  if (closuresList.length) assignDistrict(closuresList);
+  const fl = flood311List.filter(f=>f.district===base).reduce((a,f)=>a+f.n,0);
+  const cl = closuresList.filter(c=>c.district===base);
+  return {fl, cl:cl.length, em:cl.filter(c=>c.emerg).length};
+}
+function districtCtxCell(district){
+  const c = districtCtx(district);
+  if (!c) return `<span style="color:var(--ink-muted)">—</span>`;
+  const hot = n => n>1? `<b style="color:var(--band-5)">${n}</b>` : n; // >1 = attention, bold red
+  return `<div style="white-space:nowrap;font-size:12px"><span style="color:#b56a00;font-weight:700">F</span> ${hot(c.fl)} × 311</div>
+    <div style="white-space:nowrap;font-size:12px"><span style="color:#eda100;font-weight:700">!</span> ${hot(c.cl)} closure${c.cl===1?"":"s"}${c.em? ` <b style="color:var(--band-5)">${c.em} EMERG</b>`:""}</div>`;
+}
+
+// compact in-table version of the popup chart: same session buffer, no axes
 function sparkline(buf, station){
-  const pts = buf.map(s => s.st[station]).filter(Boolean).map(p=>p[0]);
-  if (pts.length < 2) return "";
-  const w=64,h=16, mn=Math.min(...pts), mx=Math.max(...pts), rng=(mx-mn)||1;
-  const step = w/(pts.length-1);
-  const d = pts.map((v,i)=>(i?"L":"M")+(i*step).toFixed(1)+","+(h-2-(v-mn)/rng*(h-4)).toFixed(1)).join("");
-  return `<svg class="spark" width="${w}" height="${h}" aria-hidden="true"><path d="${d}" fill="none" stroke="var(--seq-450)" stroke-width="2" stroke-linecap="round"/></svg>`;
+  const pts = buf.map(s => s.st[station]? {t:s.t, mm:s.st[station][0]} : null).filter(Boolean);
+  if (pts.length < 2) return `<span style="color:var(--ink-muted);font-size:10.5px">builds over session</span>`;
+  const W=124, H=30, pad=3, padR=44; // right gutter for the end-point total label
+  const t0=pts[0].t, tr=(pts[pts.length-1].t-t0)||1;
+  const yMax=Math.max(1, Math.max(...pts.map(p=>p.mm)));
+  const X=t=>pad+(t-t0)/tr*(W-pad-padR), Y=v=>(H-pad)-(v/yMax)*(H-2*pad);
+  const d=pts.map((p,i)=>(i?"L":"M")+X(p.t).toFixed(1)+","+Y(p.mm).toFixed(1)).join("");
+  const last=pts[pts.length-1], ly=Math.min(H-5, Math.max(9, Y(last.mm)+3.5));
+  return `<svg width="${W}" height="${H}" style="display:block" role="img" aria-label="session rainfall line for ${station}">
+    <path d="${d}" fill="none" stroke="var(--seq-450)" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.mm).toFixed(1)}" r="2.5" fill="var(--seq-450)"/>
+    <text x="${(X(last.t)+6).toFixed(1)}" y="${ly.toFixed(1)}" font-size="10.5" font-weight="650" fill="var(--ink-1)">${last.mm.toFixed(1)} mm</text></svg>`;
 }
 
 // ---------- filters ----------
 function filterValues(){
-  return { station: document.getElementById("fStation").value,
+  return { district: document.getElementById("fDistrict").value,
+           station: document.getElementById("fStation").value,
            rating:  document.getElementById("fRating").value,
            says:    document.getElementById("fSays").value };
 }
@@ -587,6 +1585,7 @@ function syncFilterOptions(stations){
       vals.map(v=>`<option value="${String(v).replace(/"/g,"&quot;")}">${fmt? fmt(v):v}</option>`).join("");
     if ([...el.options].some(o=>o.value===cur)) el.value = cur; // keep selection across refreshes
   };
+  fill("fDistrict", [...new Set(stations.map(s=>s.district).filter(Boolean))].sort());
   fill("fStation", stations.map(s=>s.station));
   fill("fRating", [...new Set(stations.filter(s=>s.hasReading).map(s=>s.rating))].sort((a,b)=>a-b).map(String),
        v => `${v} — ${bandOf(+v).name}`);
@@ -600,12 +1599,44 @@ let sortState = {k:"rating", dir:-1};
 document.querySelectorAll("#tbl th[data-k]").forEach(th => th.addEventListener("click", ()=>{
   const k = th.dataset.k;
   if (sortState.k === k) sortState.dir *= -1;
-  else sortState = {k, dir: (k==="mm"||k==="rating"||k==="trend")? -1 : 1};
+  else sortState = {k, dir: (k==="mm"||k==="rating"||k==="action")? -1 : 1};
   rerender();
 }));
-["fStation","fRating","fSays"].forEach(id => document.getElementById(id).addEventListener("change", rerender));
+// human-adjustable column widths: drag the right edge of any header cell
+{
+  const tbl = document.getElementById("tbl");
+  tbl.querySelectorAll("thead th").forEach(th=>{
+    const rz = document.createElement("div"); rz.className = "colrz"; rz.title = "drag to resize";
+    rz.addEventListener("click", e=>e.stopPropagation()); // never trigger the sort
+    rz.addEventListener("mousedown", e=>{
+      e.preventDefault(); e.stopPropagation();
+      // first drag freezes current widths so only the grabbed column moves
+      if (tbl.style.tableLayout!=="fixed"){
+        tbl.querySelectorAll("thead th").forEach(h=>h.style.width=h.getBoundingClientRect().width+"px");
+        tbl.style.tableLayout = "fixed";
+      }
+      const startX = e.clientX, startW = th.getBoundingClientRect().width;
+      rz.classList.add("active");
+      const move = ev=>{ th.style.width = Math.max(46, startW + ev.clientX - startX) + "px"; };
+      const up = ()=>{ rz.classList.remove("active");
+        removeEventListener("mousemove",move); removeEventListener("mouseup",up); };
+      addEventListener("mousemove",move); addEventListener("mouseup",up);
+    });
+    th.appendChild(rz);
+  });
+}
+["fDistrict","fStation","fRating","fSays"].forEach(id => document.getElementById(id).addEventListener("change", rerender));
+// the District filter also zooms the historical heatmap's rows (same data, re-grouped) and
+// drives the map's selection highlight (chosen district vivid, everything else muted)
+function restyleBoundaries(){
+  restyleWards();
+  if (neiGeoJSON) neiGeoJSON.setStyle(f=>neiStyle(f.properties.name, f.properties.district));
+}
+// picking a district (or clearing filters) drops any neighbourhood spotlight — the two
+// selection levels never stack, so the fading on screen always has one readable meaning
+document.getElementById("fDistrict").addEventListener("change", ()=>{ selectedNei = null; renderHeatmap(); restyleBoundaries(); });
 document.getElementById("fClear").addEventListener("click",
-  ()=>{ ["fStation","fRating","fSays"].forEach(id=>document.getElementById(id).value=""); rerender(); });
+  ()=>{ ["fDistrict","fStation","fRating","fSays"].forEach(id=>document.getElementById(id).value=""); selectedNei = null; rerender(); renderHeatmap(); restyleBoundaries(); });
 
 // ---------- render ----------
 function render(rows){
@@ -651,96 +1682,118 @@ function render(rows){
 
   // citywide alert — computed over stations WITH readings; blind spots are surfaced
   // alongside it, never allowed to lower it silently
+  // simple, stable cell color (user request): plain surface background with only a colored
+  // LEFT accent strip carrying the band color — no full-cell wash
   const ab = document.getElementById("alertbar");
+  ab.style.background = ""; ab.style.borderColor = "";
   if (withReading.length){
     const maxR = Math.max(...withReading.map(s=>s.rating));
     const top = withReading[0], band = bandOf(maxR);
-    ab.style.background = band.wash; ab.style.borderColor = band.color;
+    ab.style.borderLeft = `5px solid ${band.color}`;
     document.getElementById("alertLvl").textContent = maxR;
     document.getElementById("alertLvl").style.color = band.color;
     document.getElementById("alertBand").textContent =
-      `${band.icon} Citywide alert: ${band.name.toUpperCase()} — ${band.action}`;
+      `${band.icon} Citywide: ${band.name.toUpperCase()} — ${band.action}`;
     document.getElementById("alertDesc").innerHTML =
-      `Worst station ${top.station}: "${top.desc}"` +
+      `Worst ${top.station} · ${top.district||"district unknown"}` +
       (blind.length? `<br><b style="color:var(--band-5)">⚠ No visibility at ${blind.join(", ")} — blind spot, not calm.</b>` : "");
+    document.getElementById("bfNow").innerHTML =
+      `<span style="color:${band.color}">${band.icon} ${band.name.toUpperCase()}</span> — worst ${top.station} ${top.mm.toFixed(1)} mm (${top.district||"district unknown"})`;
   } else {
-    ab.style.background = "var(--band-5-wash)"; ab.style.borderColor = "var(--band-5)";
+    document.getElementById("bfNow").innerHTML =
+      `<span style="color:var(--band-5)">⚠ NO VISIBILITY</span> — no usable readings`;
+    ab.style.borderLeft = "5px solid var(--band-5)";
     document.getElementById("alertLvl").textContent = "?";
     document.getElementById("alertLvl").style.color = "var(--band-5)";
     document.getElementById("alertBand").textContent = "⚠ NO VISIBILITY — no station is reporting a usable reading";
     document.getElementById("alertDesc").textContent = "Do not assume calm. Use field reports.";
   }
 
-  // KPIs — over stations with readings only
-  const peak = withReading.length? withReading.reduce((m,s)=> s.mm>m.mm? s:m, withReading[0]) : null;
-  document.getElementById("kpiPeak").textContent = peak? fmtMm(peak.mm) : "–";
-  document.getElementById("kpiPeakN").textContent = peak? "at "+peak.station : "no readings";
-  const disp = withReading.filter(s=>s.rating>=4);
-  document.getElementById("kpiDispatch").textContent = disp.length;
-  document.getElementById("kpiDispatchN").textContent = disp.length? disp.map(s=>s.station).join(", ") : "none";
+  // trends still drive the priorities list (pre-position / reassess) and popup charts
   const trends = stations.map(s=>({s, t: s.hasReading? trendFor(buf,s.station,s.mm,s.rating) : null}));
-  const rising = trends.filter(x=>x.t && x.t.dir.includes("rising"));
-  document.getElementById("kpiRising").textContent = buf.length<2? "–" : rising.length;
-  document.getElementById("kpiRisingN").textContent = buf.length<2? "need 2+ snapshots" :
-      (rising.length? rising.map(x=>x.s.station).join(", ") : "none rising");
-  // storm shape: hot = rating>=3
+
+  // shift brief — consolidated movement cells (same trend source as priorities/table)
+  const bfRising  = trends.filter(x=>x.t && x.t.dir.includes("rising")).map(x=>x.s.station);
+  const bfFalling = trends.filter(x=>x.t && x.t.dir.includes("falling")).map(x=>x.s.station);
+  document.getElementById("bfChange").innerHTML = (bfRising.length || bfFalling.length)?
+    [ bfRising.length?  `<span style="color:var(--band-4)">▲ rising: ${bfRising.join(", ")}</span>` : "",
+      bfFalling.length? `<span style="color:var(--band-0)">▼ easing: ${bfFalling.join(", ")}</span>` : ""
+    ].filter(Boolean).join(" · ") :
+    (buf.length>1? "steady — no gauge moving (session estimate)" : "no trend yet — needs 2+ samples; leave page open");
+  document.getElementById("bfBlind").innerHTML = blind.length?
+    `<span style="color:var(--band-5)">⚠ ${blind.join(", ")} — verify by field report</span>` :
+    `none — all ${withReading.length} gauges reporting`;
+
+  // storm shape (localized vs citywide) rides on the alert bar rather than its own tile
   const hot = withReading.filter(s=>s.rating>=3 && s.lat!=null);
-  let shape="Quiet", shapeN="no station at Monitor or above";
-  if (hot.length){
+  if (withReading.length && hot.length){
     const latSpread = Math.max(...hot.map(s=>s.lat))-Math.min(...hot.map(s=>s.lat));
     const lonSpread = Math.max(...hot.map(s=>s.lon))-Math.min(...hot.map(s=>s.lon));
     const km = Math.max(latSpread*111, lonSpread*66);
-    shape = (hot.length<=3 || km<8)? "Localized" : (hot.length>=8? "Citywide" : "Multi-area");
-    shapeN = `${hot.length} station(s) ≥ Monitor, spread ≈ ${km.toFixed(0)} km`;
+    const shape = (hot.length<=3 || km<8)? "Localized" : (hot.length>=8? "Citywide" : "Multi-area");
+    document.getElementById("alertDesc").innerHTML +=
+      ` · <b>${shape}</b> — ${hot.length} ≥ Monitor, ≈ ${km.toFixed(0)} km`;
   }
-  document.getElementById("kpiShape").textContent = shape;
-  document.getElementById("kpiShapeN").textContent = shapeN;
 
-  // band strip
-  document.getElementById("bands").innerHTML = BANDS.map(b=>{
-    const inBand = withReading.filter(s=>s.rating>=b.min && s.rating<=b.max);
-    // Normal stations are deliberately not listed — the supervisor's attention belongs on
-    // the exceptions; the count is enough to confirm the rest of the network is quiet
-    const list = b.min>=3? (inBand.length? inBand.map(s=>s.station).join(", "):"—")
-                         : (inBand.length? "network quiet here":"—");
-    return `<div class="band" style="border-left-color:${b.color};${inBand.length&&b.min>=3? 'background:'+b.wash:''}">
-      <div class="bn"><span>${b.icon} ${b.name}</span><span style="color:var(--ink-muted);font-weight:500">r ${b.min===0?'0–2':(b.max>8?'6+':b.min)}</span></div>
-      <div class="bc">${inBand.length}</div>
-      <div class="bd">${list}</div>
-      <div class="ba">${b.action}</div></div>`;
-  }).join("");
+  // KPI tiles — worst gauge (stations[] is already sorted worst-first: rating, then mm)
+  const worst = withReading.length? withReading[0] : null;
+  document.getElementById("kpiPeak").textContent = worst? fmtMm(worst.mm) : "–";
+  // concise by request: station · band · district only — the action + verbatim feed text
+  // live in the alert bar and priorities, no need to repeat them here
+  document.getElementById("kpiPeakN").innerHTML = worst?
+    `${worst.station} · rating ${worst.rating} ${bandOf(worst.rating).name} · ${worst.district||"district unknown"}` : "no readings";
+
+  // gauges a crew should be looking at: at Dispatch or worse, rising Monitors, blind spots
+  const attn = withReading.filter(s=>s.rating>=4)
+    .concat(trends.filter(x=>x.t && x.t.dir.includes("rising") && x.s.hasReading && x.s.rating===3).map(x=>x.s));
+  document.getElementById("kpiAttn").textContent = attn.length + blind.length;
+  // concise by request: stacked per-band COUNTS, no station codes (those live in Priorities + table)
+  const byBand = {};
+  attn.forEach(s=>{ byBand[bandOf(s.rating).name] = (byBand[bandOf(s.rating).name]||0) + 1; });
+  document.getElementById("kpiAttnN").innerHTML =
+    (attn.length? Object.entries(byBand).map(([b,n])=>`${n} ${b}`).join("<br>")
+                : "none at Dispatch or worse") +
+    (blind.length? `<br>${blind.length} blind spot(s)` : "");
+
+  updatePumpTile(withReading);
+  updateClosureTile();
 
   // priorities — the state above, converted into an ordered duty list
   // (importance = rating band; urgency = trend & blindness; geography = district)
+  // each priority reads as one plain sentence (user request): verb chip, then
+  // "do X in <districts (stations)>." with a natural and-joined district list
+  const joinNice = arr => arr.length<=1? arr.join("") :
+    arr.slice(0,-1).join(", ") + " and " + arr[arr.length-1];
   const byDistrict = list => {
     const g = {};
     list.forEach(s => (g[s.district||"—"] = g[s.district||"—"]||[]).push(s.station));
-    return Object.entries(g).map(([d,st])=>`<b>${d}</b> (${st.join(", ")})`).join(" · ");
+    return joinNice(Object.entries(g).map(([d,st])=>`<b>${d}</b> (${st.join(", ")})`));
   };
   const prio = [];
   const esc = withReading.filter(s=>s.rating>=6);
-  if (esc.length) prio.push({c:"var(--band-6)", verb:"ESCALATE", txt:`notify Emergency Management, start public advisories — ${byDistrict(esc)}`});
+  if (esc.length) prio.push({c:"var(--band-6)", verb:"ESCALATE", txt:`Notify Emergency Management and start public advisories for ${byDistrict(esc)}.`});
   const barr = withReading.filter(s=>s.rating===5);
-  if (barr.length) prio.push({c:"var(--band-5)", verb:"BARRICADE", txt:`close underpasses & low areas — ${byDistrict(barr)}`});
+  if (barr.length) prio.push({c:"var(--band-5)", verb:"BARRICADE", txt:`Close underpasses and low areas in ${byDistrict(barr)}.`});
   const dsp = withReading.filter(s=>s.rating===4);
-  if (dsp.length) prio.push({c:"var(--band-4)", verb:"DISPATCH", txt:`crews to catch basins & pump checks — ${byDistrict(dsp)}`});
+  if (dsp.length) prio.push({c:"var(--band-4)", verb:"DISPATCH", txt:`Send crews to clear catch basins and check pumps in ${byDistrict(dsp)}.`});
   const pre = trends.filter(x=>x.t && x.t.dir.includes("rising") && x.s.hasReading && x.s.rating>=3 && x.s.rating<4).map(x=>x.s);
-  if (pre.length) prio.push({c:"var(--band-3)", verb:"PRE-POSITION", txt:`Monitor stations rising — ${byDistrict(pre)}`});
+  if (pre.length) prio.push({c:"var(--band-3)", verb:"PRE-POSITION", txt:`Rain is rising at Monitor stations in ${byDistrict(pre)} — stage crews nearby.`});
   const falling = trends.filter(x=>x.t && x.t.dir.includes("falling") && x.s.hasReading && x.s.rating>=4).map(x=>x.s);
-  if (falling.length) prio.push({c:"var(--band-0)", verb:"REASSESS", txt:`easing at ${byDistrict(falling)} — consider standing down staged resources on next publish`});
-  if (blind.length) prio.push({c:"var(--ink-muted)", verb:"VERIFY", txt:`no visibility at ${blind.join(", ")} — blind spots, confirm by field report`});
-  if (lastEmergDisruptions > 0) prio.push({c:"var(--band-5)", verb:"ROUTE AROUND", txt:`${lastEmergDisruptions} emergency road disruption(s) in effect — enable the closures map layer before sending crews`});
+  if (falling.length) prio.push({c:"var(--band-0)", verb:"REASSESS", txt:`Rainfall is easing in ${byDistrict(falling)} — consider standing down staged resources after the next publish.`});
+  if (blind.length) prio.push({c:"var(--ink-muted)", verb:"VERIFY", txt:`No data from ${blind.join(", ")} — treat as blind spots and confirm conditions by field report.`});
+  if (lastEmergDisruptions > 0) prio.push({c:"var(--band-5)", verb:"ROUTE AROUND", txt:`${lastEmergDisruptions} emergency road closure(s) are in effect — plan crew routes around them.`});
   document.getElementById("prioList").innerHTML = prio.length?
     prio.map(p=>`<li style="border-left-color:${p.c}"><span class="verb">${p.verb}</span> — ${p.txt}</li>`).join("") :
-    `<li style="border-left-color:var(--band-0)"><span class="verb">ROUTINE MONITORING</span> — no station at Monitor or above, no blind spots. Next reassessment on auto-refresh.</li>`;
+    `<li style="border-left-color:var(--band-0)"><span class="verb">ROUTINE MONITORING</span> — No station is at Monitor or above and no gauge is blind. Next reassessment on auto-refresh.</li>`;
 
   // filters — repopulate options (preserving selection), then read active values
   syncFilterOptions(stations);
   const fv = filterValues();
-  const passes = s => (!fv.station || s.station===fv.station) &&
+  const passes = s => (!fv.district || s.district===fv.district) &&
+                      (!fv.station || s.station===fv.station) &&
                       (!fv.rating || (s.hasReading && String(s.rating)===fv.rating)) &&
                       (!fv.says   || s.desc===fv.says);
-  const anyFilter = !!(fv.station || fv.rating || fv.says);
+  const anyFilter = !!(fv.district || fv.station || fv.rating || fv.says);
 
   // table — blind spots (vanished or unreadable stations) pinned on top, styled as such
   const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
@@ -748,9 +1801,10 @@ function render(rows){
     .filter(id => !anyFilter || fv.station===id)
     .map(id => `<tr class="blind">
       <td><b>${id}</b></td><td>—</td>
-      <td class="num">—</td>
-      <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
       <td><span style="color:var(--ink-muted)">—</span></td>
+      <td class="num">—</td>
+      <td>—</td>
+      <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
       <td class="desc-cell"><b>No visibility</b> — station dropped from the feed this session. Blind spot, not calm.</td>
     </tr>`).join("");
   const cmp = {
@@ -758,7 +1812,7 @@ function render(rows){
     district: (a,b)=> (a.s.district||"~").localeCompare(b.s.district||"~"),
     mm: (a,b)=> (a.s.mm||0)-(b.s.mm||0),
     rating: (a,b)=> (a.s.rating||0)-(b.s.rating||0) || (a.s.mm||0)-(b.s.mm||0),
-    trend: (a,b)=> ((a.t? a.t.d : -1e9))-((b.t? b.t.d : -1e9)),
+    action: (a,b)=> (a.s.rating||0)-(b.s.rating||0),
     says: (a,b)=> a.s.desc.localeCompare(b.s.desc)
   }[sortState.k] || null;
   const sorted = trends.filter(({s}) => passes(s) || (!anyFilter && !s.hasReading))
@@ -774,22 +1828,27 @@ function render(rows){
     const district = s.district || "—";
     if (!s.hasReading) return `<tr class="blind">
       <td><b>${s.station}</b></td><td>${district}</td>
+      <td>${districtCtxCell(district)}</td>
       <td class="num">—</td>
+      <td>—</td>
       <td><span class="chip" style="background:var(--ink-muted);color:#fff">? no data</span></td>
-      <td><span style="color:var(--ink-muted)">—</span></td>
       <td class="desc-cell"><b>No usable reading</b> — value missing or malformed. Blind spot, not calm.</td>
     </tr>`;
     const b = bandOf(s.rating), chipBg = MARKER_HEX[b.name];
     return `<tr>
-      <td><b>${s.station}</b></td><td>${district}</td>
-      <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*70).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
-      <td><span class="chip" style="background:${chipBg};color:${inkOn(chipBg)}">${b.icon} ${s.rating} ${b.name}</span></td>
-      <td>${t? `<span class="trend" style="color:${t.color}">${t.dir}</span> <span style="color:var(--ink-muted);font-size:11.5px">${t.d>=0?'+':''}${t.d.toFixed(1)} mm/${t.mins}m${t.note? ' · '+t.note : ''}</span><br>${sparkline(buf,s.station)}` : `<span style="color:var(--ink-muted)">awaiting next feed publish…</span>`}</td>
+      <td><b><a href="#" class="stlink" data-st="${s.station}" data-lat="${s.lat}" data-lon="${s.lon}"
+        title="click: 4 nearest live traffic cameras">${s.station}</a></b></td>
+      <td>${s.district? `<a href="#" class="stlink dstlink" data-d="${s.district}"
+        title="click: 4 nearest live cameras in/near this district">${district}</a>` : district}</td>
+      <td>${districtCtxCell(district)}</td>
+      <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*36).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
+      <td>${sparkline(buf, s.station)}</td>
+      <td style="max-width:200px"><span class="chip" style="background:${chipBg};color:${inkOn(chipBg)}">${b.icon} ${s.rating} ${b.name}</span><div style="font-size:12px;font-weight:600;margin-top:3px">${b.action}${t && !t.dir.includes("steady")? `<br><span class="trend" style="color:${t.color};font-weight:650;font-size:11.5px">${t.dir} (session)</span>` : ""}</div></td>
       <td class="desc-cell">${s.desc}</td>
     </tr>`;
   }).join("");
   document.querySelector("#tbl tbody").innerHTML = missingRows + (bodyRows ||
-    `<tr><td colspan="6" style="color:var(--ink-muted);padding:14px">No station matches the current filters.</td></tr>`);
+    `<tr><td colspan="7" style="color:var(--ink-muted);padding:14px">No station matches the current filters.</td></tr>`);
   const snaps = buf.length, span = snaps>1? Math.round((buf[buf.length-1].t-buf[0].t)/60000):0;
   document.getElementById("trendNote").textContent = (snaps<2?
     "Trend builds from 10-min samples + feed publishes — leave this page open; a full 24h line accumulates over a day." :
@@ -824,8 +1883,28 @@ function render(rows){
     const meta = loadMeta();
     missing.forEach(id => { if (meta[id]) ghost(id, meta[id].lat, meta[id].lon, "Station dropped from the feed this session."); });
     restyleWards();
+    applyContextFilter();
   }
   document.getElementById("failbar").style.display="none";
+}
+
+// district filter reaches every legend marker layer, not just the gauges: each context
+// marker resolves its district once (point-in-polygon, cached on the marker), then hides
+// via CSS so toggling layers/filters never rebuilds the layer data
+function applyContextFilter(){
+  const d = filterValues().district;
+  [pumpLayer, closureLayer, cameraLayer, flood311Layer].forEach(layer=>{
+    if (!layer) return;
+    layer.eachLayer(m=>{
+      if (m._district===undefined){
+        const ll = m.getLatLng();
+        m._district = districtFeats.length? districtOf(ll.lat, ll.lng) : undefined;
+      }
+      const show = !d || m._district===d || m._district==="near "+d;
+      const el = m.getElement && m.getElement();
+      if (el) el.style.display = show? "" : "none";
+    });
+  });
 }
 
 // ---------- forecast (Open-Meteo, CORS-open, no key) ----------
@@ -834,35 +1913,69 @@ let fcCache = {t:0};
 async function loadForecast(){
   if (Date.now()-fcCache.t < 30*60*1000 && fcCache.data){ return; }
   try{
-    const d = await fetch("https://api.open-meteo.com/v1/forecast?latitude=53.55&longitude=-113.50&hourly=temperature_2m,precipitation,wind_gusts_10m&forecast_days=2&timezone=America%2FEdmonton").then(r=>r.json());
+    const d = await fetch("https://api.open-meteo.com/v1/forecast?latitude=53.55&longitude=-113.50&hourly=temperature_2m,precipitation,snowfall,wind_gusts_10m&daily=sunrise,sunset&forecast_days=2&timezone=America%2FEdmonton").then(r=>r.json());
     fcCache = {t:Date.now(), data:d};
+    const cfg = trackCfg(); // rain: precipitation/mm · snow: snowfall/cm
     const H = d.hourly, nowH = H.time.findIndex(t=>Date.parse(t)>=Date.now())-1;
     const idx = Math.max(0,nowH), hrs = [];
     for (let i=idx; i<Math.min(idx+24, H.time.length); i++)
-      hrs.push({t:H.time[i], p:H.precipitation[i]||0, temp:H.temperature_2m[i], gust:H.wind_gusts_10m[i]});
+      hrs.push({t:H.time[i], p:(H[cfg.pField]||[])[i]||0, temp:H.temperature_2m[i], gust:H.wind_gusts_10m[i]});
     const tot = hrs.reduce((a,h)=>a+h.p,0);
     const peak = hrs.reduce((m,h)=>h.p>m.p?h:m, hrs[0]);
     const maxGust = Math.max(...hrs.map(h=>h.gust||0));
     const fmtH = t=>new Date(t).toLocaleTimeString("en-CA",{hour:"numeric"});
-    document.getElementById("fcHead").innerHTML = tot<0.2?
-      `<b>No meaningful rain expected in the next 24 h</b> (max gusts ${maxGust.toFixed(0)} km/h). Model forecast — the gauges above remain the ground truth.` :
-      `<b>${tot.toFixed(1)} mm expected over the next 24 h</b> — heaviest ≈ ${peak.p.toFixed(1)} mm/h around ${fmtH(peak.t)} · max gusts ${maxGust.toFixed(0)} km/h. Model forecast — the gauges above remain the ground truth.`;
-    // precip bars with temperature labels underneath — one axis, no overlaid second scale
-    const W=760, Hh=96, bw=W/24, pMax=Math.max(1, ...hrs.map(h=>h.p));
-    const bars = hrs.map((h,i)=>{
-      const bh = h.p/pMax*54;
-      return `<rect x="${(i*bw+3).toFixed(1)}" y="${(60-bh).toFixed(1)}" width="${(bw-6).toFixed(1)}" height="${Math.max(bh,h.p>0?2:0).toFixed(1)}" rx="2" fill="var(--seq-450)"/>` +
-        (h.p>=0.5? `<text x="${(i*bw+bw/2).toFixed(1)}" y="${(56-bh).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--ink-2)">${h.p.toFixed(1)}</text>`:"") +
-        (i%3===0? `<text x="${(i*bw+bw/2).toFixed(1)}" y="74" text-anchor="middle" font-size="9" fill="var(--ink-muted)">${fmtH(h.t)}</text>
-                   <text x="${(i*bw+bw/2).toFixed(1)}" y="90" text-anchor="middle" font-size="9.5" fill="var(--ink-2)">${Math.round(h.temp)}°</text>`:"");
-    }).join("");
-    document.getElementById("fcChart").innerHTML =
-      `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;display:block" role="img" aria-label="Hourly precipitation forecast">
-        <line x1="0" y1="60" x2="${W}" y2="60" stroke="var(--baseline)" stroke-width="1"/>${bars}
-        <text x="${W}" y="10" text-anchor="end" font-size="9" fill="var(--ink-muted)">bars = precip mm/h · bottom row = °C</text>
-      </svg>`;
+    // extreme-weather flag: heavy total, an intense hour, or damaging gusts
+    const extreme = tot>=cfg.extremeTot || peak.p>=cfg.extremeHr || maxGust>=70;
+    const brief = tot<0.2?
+      `no meaningful ${cfg.word} expected · max gusts ${maxGust.toFixed(0)} km/h` :
+      `heaviest ≈ ${peak.p.toFixed(1)} ${cfg.unit}/h around ${fmtH(peak.t)} · max gusts ${maxGust.toFixed(0)} km/h`;
+    document.getElementById("kpiFc").textContent = tot<0.2? "Quiet" : `${tot.toFixed(1)} ${cfg.unit}`;
+    document.getElementById("kpiFc").style.color = extreme? "var(--band-5)" : "";
+    document.getElementById("kpiFcN").innerHTML =
+      (extreme? `<b style="color:var(--band-5)">⚠ EXTREME WEATHER POSSIBLE</b> — ` : "") + brief;
+    document.getElementById("fcHead").innerHTML =
+      (extreme? `<b style="color:var(--band-5)">⚠ Extreme weather possible in the next 24 h.</b> ` : "") +
+      (tot<0.2? `<b>No meaningful ${cfg.word} expected in the next 24 h</b>` : `<b>${tot.toFixed(1)} ${cfg.unit} of ${cfg.word} expected over the next 24 h</b> — ${brief}`) +
+      `. Official Environment Canada 7-day forecast below (alerts via the link under it or the map's ECCC layer) — the gauges above remain the ground truth.`;
+    // crew work window — the field crew's question is not "how much today" but
+    // "do we work now, or stage and wait": rain over the next 6 h, gusts, temp, daylight
+    const n6 = hrs.slice(0,6);
+    const falling = cfg.word==="snow"? "snowing" : "raining";
+    let rainPhrase = "dry through the next 6 h";
+    if (n6.some(h=>h.p>=0.2)){
+      let ease = null;
+      for (let i=0;i<n6.length-1;i++) if (n6[i].p<0.2 && n6[i+1].p<0.2){ ease = n6[i].t; break; }
+      rainPhrase = n6[0].p>=0.2?
+        (ease? `${falling} — easing ≈ ${fmtH(ease)}` : `${falling} through the next 6 h`) :
+        `dry now — ${cfg.word} ≈ ${fmtH(n6.find(h=>h.p>=0.2).t)}`;
+    } else {
+      const later = hrs.find(h=>h.p>=0.2);
+      if (later) rainPhrase += ` — ${cfg.word} returns ≈ ${fmtH(later.t)}`;
+    }
+    const g6 = Math.max(...n6.map(h=>h.gust||0));
+    const t6 = n6.map(h=>h.temp), tLo = Math.min(...t6), tHi = Math.max(...t6);
+    const fmtHM = s => new Date(s).toLocaleTimeString("en-CA",{hour:"2-digit",minute:"2-digit"});
+    const nowMs = Date.now();
+    const sunset = (d.daily?.sunset||[]).map(s=>({s, ms:Date.parse(s)})).find(x=>x.ms>nowMs);
+    const sunrise = (d.daily?.sunrise||[]).map(s=>({s, ms:Date.parse(s)})).find(x=>x.ms>nowMs);
+    const light = sunset && (!sunrise || sunset.ms < sunrise.ms)?
+      `daylight until ${fmtHM(sunset.s)} (${((sunset.ms-nowMs)/3600000).toFixed(1)} h left)` :
+      (sunrise? `dark — first light ${fmtHM(sunrise.s)}` : "");
+    document.getElementById("fcCrew").innerHTML =
+      `<b>Crew work window (next 6 h):</b> ${rainPhrase} · gusts to ${g6.toFixed(0)} km/h` +
+      `${g6>=60? ' <b style="color:var(--band-5)">— high-wind caution</b>':''} · ${Math.round(tLo)}–${Math.round(tHi)}°C · ${light}`;
+    document.getElementById("bfIn").innerHTML =
+      (extreme? `<span style="color:var(--band-5)">⚠ EXTREME POSSIBLE</span> — ` : "") +
+      (tot<0.2? `quiet — no meaningful ${cfg.word} expected` : `${tot.toFixed(1)} ${cfg.unit} — ${brief}`);
+    document.getElementById("bfCrew").innerHTML =
+      `${rainPhrase} · gusts ${g6.toFixed(0)} km/h${g6>=60?' <span style="color:var(--band-5)">high-wind caution</span>':''} · ${light}`;
   }catch(e){
-    document.getElementById("fcHead").textContent = "Forecast unavailable — decide from live gauges and radar.";
+    document.getElementById("fcHead").textContent = "Forecast summary unavailable — use the Environment Canada page below, live gauges and radar.";
+    document.getElementById("fcCrew").textContent = "";
+    document.getElementById("bfIn").textContent = "forecast unavailable — decide from gauges & radar";
+    document.getElementById("bfCrew").textContent = "forecast unavailable";
+    document.getElementById("kpiFc").textContent = "–";
+    document.getElementById("kpiFcN").textContent = "forecast unavailable — decide from live gauges and radar";
     console.warn("forecast unavailable", e);
   }
 }
@@ -879,6 +1992,7 @@ async function load(){
     render(rows);
     loadClosures(); // context layers refresh on the same cycle; failures are non-fatal
     loadForecast();
+    loadEccc();
   }catch(e){
     // keep the last-known data-as-of visible: the numbers still on screen have an age,
     // and erasing their timestamp would hide exactly what the supervisor needs to know
@@ -902,6 +2016,142 @@ setInterval(()=>{ // countdown + auto-refresh
   if (s<=0) load();
 },1000);
 document.getElementById("refreshBtn").addEventListener("click", load);
+// (weather-map type switch removed 2026-07-13 — Windy is now the only regional weather map,
+//  always visible with src set in the HTML)
+// ---------- official ECCC 7-day forecast + city alerts (citypageweather API) ----------
+// Same data that renders weather.gc.ca, but in our own markup: layout is pixel-stable
+// (no iframe, no crop, immune to alert banners). CORS-open, refreshed every 30 min.
+let ecccCache = {t:0};
+async function loadEccc(){
+  if (Date.now()-ecccCache.t < 30*60*1000 && ecccCache.ok) return;
+  const en = v => (v && typeof v === "object" && "en" in v)? v.en : v;
+  try{
+    const p = (await fetch("https://api.weather.gc.ca/collections/citypageweather-realtime/items/ab-50?f=json")
+      .then(r=>r.json())).properties;
+    // 7-day grid: day/night periods pair into one card per calendar day (each half keeps
+    // its own icon + condition, like the ECCC table); a leading "Tonight" gets its own card
+    const cols = [], summaries = [];
+    // chips: rain probability (from ECCC's own "% chance" wording) + notable wind
+    // (major wind period; red when gusts reach the 60 km/h crew-caution threshold)
+    const chips = (pop, wind) => {
+      const b = [];
+      if (pop!=null) b.push(`<span class="fcb">💧 ${pop}%</span>`);
+      if (wind && ((wind.spd||0)>=20 || (wind.gst||0)>=30))
+        b.push(`<span class="fcb${(wind.gst||0)>=60? " fcb-warn":""}">💨 ${wind.dir||""} ${wind.spd}${wind.gst? " g "+wind.gst:""} km/h</span>`);
+      return b.join(" ");
+    };
+    (p.forecastGroup?.forecasts||[]).forEach(f=>{
+      const name = en(f.period?.textForecastName)||"";
+      const night = /night|tonight/i.test(name);
+      const temp = (f.temperatures?.temperature||[])[0];
+      const val = temp? en(temp.value) : null;
+      const icon = f.abbreviatedForecast?.icon?.url? en(f.abbreviatedForecast.icon.url) : null;
+      const tx = en(f.abbreviatedForecast?.textSummary)||"";
+      const full = en(f.textSummary)||"";
+      const popM = full.match(/(\d+)\s*percent/i);
+      const pop = popM? +popM[1] : null;
+      const wp = (f.winds?.periods||[]);
+      const wMax = wp.reduce((m,w)=> (en(w.gust?.value)||0) > (m? en(m.gust?.value)||0 : -1)? w : m, wp[0]||null);
+      const wind = wMax? {dir: en(wMax.direction)||"", spd: en(wMax.speed?.value)||0, gst: en(wMax.gust?.value)||0} : null;
+      if (full) summaries.push({name, full, night, ch: chips(pop, wind)});
+      if (night && cols.length && cols[cols.length-1].lo==null && !cols[cols.length-1].nightOnly){
+        const c = cols[cols.length-1];
+        c.lo = val; c.nIcon = icon; c.nTx = tx; c.nCh = chips(pop, wind);
+      } else {
+        cols.push(night? {d:name, lo:val, nIcon:icon, nTx:tx, nCh:chips(pop,wind), nightOnly:true}
+                       : {d:name, hi:val, icon, tx, ch:chips(pop,wind)});
+      }
+    });
+    const nightHalf = c => (c.lo!=null || c.nIcon)? `
+        <div class="fcnight">
+          ${c.nIcon? `<img src="${c.nIcon}" alt="">` : ""}
+          ${c.lo!=null? `<div class="lo">night ${c.lo}°C</div>`:""}
+          ${c.nTx? `<div class="tx">${c.nTx}</div>`:""}
+          ${c.nCh? `<div class="fcbadges">${c.nCh}</div>`:""}
+        </div>` : "";
+    // each card is one calendar day: card 0 = today (also when it's a lone "Tonight"),
+    // card i = today + i days — stamped in Edmonton time
+    const dayDate = i => new Date(Date.now() + i*86400000)
+      .toLocaleDateString("en-CA", {timeZone:"America/Edmonton", month:"short", day:"numeric"});
+    document.getElementById("ecccTable").innerHTML = `<div class="fcgrid">` + cols.slice(0,8).map((c,i)=>`
+      <div class="fcday">
+        <div class="d">${c.d}</div>
+        <div class="dd">${dayDate(i)}</div>
+        ${c.nightOnly? "" : `
+          ${c.icon? `<img src="${c.icon}" alt="">` : ""}
+          ${c.hi!=null? `<div class="hi">${c.hi}°C</div>`:""}
+          <div class="tx">${c.tx}</div>
+          ${c.ch? `<div class="fcbadges">${c.ch}</div>`:""}`}
+        ${nightHalf(c)}
+      </div>`).join("") + `</div>` +
+      // the full ECCC text summaries (rain %, wind, thunderstorm risk — ECCC's own wording),
+      // as aligned period rows: day rows lead, night rows indent + mute under them
+      (summaries.length? (()=>{ let day=-1; return `<div class="fcsum">` + summaries.map(s=>{
+        if (!s.night || day<0) day++;
+        return `<div class="row${s.night? " night":""}">
+          <div class="pname">${s.name} <span style="font-weight:500;color:var(--ink-muted)">· ${dayDate(day)}</span>${s.ch? `<div>${s.ch}</div>`:""}</div>
+          <div class="ptext">${s.full}</div></div>`;}).join("") + `</div>`; })() : "");
+    const issued = en(p.forecastGroup?.timestamp);
+    document.getElementById("ecccIssuedAt").textContent = issued?
+      `Forecast issued ${new Date(issued).toLocaleString("en-CA",{timeZone:"America/Edmonton",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})} MT · source: Environment Canada citypage API · ` : "";
+    // Edmonton-scoped weather alerts -> KPI tile (this is the city's own warnings feed)
+    const w = p.warnings;
+    const list = Array.isArray(w)? w : (w?.event? [w] : (w?.events||[]));
+    const names = list.map(x => en(x.description)||en(x.eventType)||en(x.event)||en(x.name)||"alert")
+                      .filter((v,i,a)=>a.indexOf(v)===i);
+    const kv = document.getElementById("kpiAlerts"), kn = document.getElementById("kpiAlertsN");
+    if (names.length){
+      kv.textContent = names.length; kv.style.color = "var(--band-5)";
+      kn.innerHTML = `<b style="color:var(--band-5)">${names.join(" · ")}</b>`;
+      document.getElementById("bfAlerts").innerHTML =
+        `<span style="color:var(--band-5)">⚠ ${names.join(" · ")}</span>`;
+    } else {
+      kv.textContent = "None"; kv.style.color = "";
+      kn.textContent = "no watches or warnings";
+      document.getElementById("bfAlerts").textContent = "none in effect";
+    }
+    ecccCache = {t:Date.now(), ok:true};
+  }catch(e){
+    document.getElementById("ecccTable").textContent =
+      "Environment Canada forecast unavailable — use the link below or the Open-Meteo brief above.";
+    document.getElementById("kpiAlerts").textContent = "?";
+    document.getElementById("kpiAlertsN").textContent = "alert feed unreachable — check weather.gc.ca directly";
+    document.getElementById("bfAlerts").innerHTML =
+      `<span style="color:var(--band-5)">? feed unreachable — check weather.gc.ca</span>`;
+    console.warn("eccc citypage unavailable", e);
+  }
+}
+
+// tracking-mode switch: swaps radar product, 311 categories, and forecast variable in place
+function setTrackMode(mode){
+  if (!TRACK[mode] || mode===trackMode) return;
+  trackMode = mode;
+  try{ localStorage.setItem("edm_track_mode", mode); }catch(e){}
+  const cfg = trackCfg();
+  applyTrackLabels(cfg);
+  if (setWindyOverlay) setWindyOverlay(cfg.windyOverlay); // snow → Snow accum. forecast view
+  // relabel the 311 layer toggle in place (checkbox state survives)
+  const lab311 = [...document.querySelectorAll("#layerPanel label")].find(l=>/311/.test(l.textContent));
+  if (lab311) lab311.lastChild.textContent = cfg.layerLabel;
+  flood311List = [];
+  loadFlood311();          // re-query with the mode's categories (also updates KPI + markers)
+  fcCache = {t:0};
+  loadForecast();          // recompute the 24h brief + crew window on the mode's variable
+  rerender();
+}
+// mode-dependent static text: map panel title + the map legend's 311 phrase/red meaning —
+// these must never claim snowfall gauge measurements (the network is rain-only)
+function applyTrackLabels(cfg){
+  document.getElementById("mapH2").textContent = cfg.mapTitle;
+  const ph = document.getElementById("legend311Phrase");
+  if (ph) ph.textContent = `311 ${cfg.label311} reports`;
+  const rd = document.getElementById("legend311Red");
+  if (rd) rd.textContent = `red = ${cfg.redLabel}`;
+}
+applyTrackLabels(trackCfg());
+if (trackMode==="snow" && setWindyOverlay) setWindyOverlay(trackCfg().windyOverlay);
+document.getElementById("trackSel").value = trackMode;
+document.getElementById("trackSel").addEventListener("change", e=>setTrackMode(e.target.value));
 
 initMap();
 load();

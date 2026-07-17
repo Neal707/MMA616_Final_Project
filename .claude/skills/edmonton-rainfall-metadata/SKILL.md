@@ -64,9 +64,15 @@ show the feed's own description string).
    RG-series). Verified live 2026-07-12. Intra-day history comes only from the session buffer.
 
 **Companion datasets** (full evaluation table in the library file): `yhez-gf32` pump stations
-(STORM/COMBINED only) and `k4tx-5k8p` live traffic disruptions are merged as map context layers;
-hourly ECCC weather (`ib2b-3mi4`, no precip field + corrupt dates) and water levels (`cnsu-iagr`,
-stale/upstream) were evaluated and rejected — don't re-propose them without rechecking.
+(STORM/COMBINED only), `k4tx-5k8p` live traffic disruptions, and `q7ua-agfg` 311 requests
+(flood-related descriptions only, last 7 days — updates DAILY, locations are neighbourhood
+centroids, so context only, never the alert signal; includes an "Underpass Flooding Dispatch"
+description) are merged as map context layers. Evaluated and **rejected** — don't re-propose
+without rechecking: hourly ECCC weather (`ib2b-3mi4`, no precip field + corrupt dates); water
+levels (`cnsu-iagr`, stale — max reading 2026-06-03, rechecked 2026-07-12); the 2014 Flood
+Mitigation ponding-depth map layers (`fkxj-864d` etc. — SODA exposes zero columns and the
+GeoJSON export returns an empty FeatureCollection, verified 2026-07-12; no machine-readable
+underpass/low-point inventory exists on the portal).
 
 Deeper detail (full cautions, SoQL patterns, provenance): `knowledge/edmonton-rainfall-library.md`.
 Personas and metric definitions: `CLAUDE.md`.
