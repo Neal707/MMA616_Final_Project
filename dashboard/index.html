@@ -453,7 +453,7 @@
         <th data-k="district" style="width:110px">District</th>
         <th style="width:96px">311 · closures</th>
         <th class="num" data-k="mm" style="width:118px">24h rain (mm)</th>
-        <th style="width:132px">24h line</th>
+        <th class="num" data-k="fc" style="width:118px">Next 24h forecast (mm)</th>
         <th data-k="rating" style="width:150px">Rating · action now</th>
         <th data-k="says">Feed says</th>
       </tr></thead>
@@ -507,7 +507,7 @@ const bandOf = r => BANDS.find(b => r>=b.min && r<=b.max) || BANDS[0];
 const fmtMm = v => v.toFixed(1)+" mm";
 
 let map=null, markerLayer=null, wardLayer=null, pumpLayer=null, closureLayer=null, cameraLayer=null,
-    flood311Layer=null, timer=null;
+    flood311Layer=null, pondLayer=null, timer=null;
 let closuresList = [], flood311List = []; // for the district crew-context card
 
 // City of Edmonton traffic cameras (edmontontrafficcam.com — a City of Edmonton web app;
@@ -632,6 +632,7 @@ function initMap(){
   // context layers default OFF — the gauges are the primary read; pumps/closures are
   // one click away when the supervisor is actually routing crews or barricades
   pumpLayer = L.layerGroup();
+  pondLayer = L.layerGroup();
   closureLayer = L.layerGroup();
   cameraLayer = L.layerGroup();
   flood311Layer = L.layerGroup().addTo(map); // default ON: sparse (~a dozen badges) and it is
@@ -648,6 +649,8 @@ function initMap(){
       ic(`<span style="width:14px;height:14px;border-radius:3px;background:linear-gradient(135deg,#fee79a 0%,#f78f33 55%,#8a1616 100%)"></span>`)],
     ["Rain gauges",            markerLayer,    true,
       ic(`<span style="width:12px;height:12px;border-radius:50%;background:#1a1a19;border:1.5px solid #fff;box-shadow:0 0 0 1px var(--ring)"></span>`)],
+    ["Storm ponds (SWM facilities)", pondLayer, false,
+      ic(`<span style="width:14px;height:14px;border-radius:50%;background:#7ec4cf;border:2px solid #2a7885"></span>`)],
     ["Storm pump stations",    pumpLayer,      false,
       ic(`<span style="width:14px;height:14px;border-radius:3px;background:#fff;border:2px solid #52514e;color:#52514e;font:700 9px/10px system-ui;text-align:center">P</span>`)],
     ["Road closures (live)",   closureLayer,   false,
@@ -696,6 +699,7 @@ function initMap(){
   });
   loadCameras();
   loadPumps();
+  loadPonds();
   loadWards();
   loadFlood311();
 }
@@ -1342,6 +1346,8 @@ function crewContext(name){
   const bits = [];
   if (pumpsList){ assignDistrict(pumpsList);
     bits.push(`${pumpsList.filter(p=>p.district===name).length} pump station(s)`); }
+  if (pondsList){ assignDistrict(pondsList);
+    bits.push(`${pondsList.filter(p=>p.district===name).length} storm pond(s)`); }
   if (closuresList.length){ assignDistrict(closuresList);
     const cl = closuresList.filter(c=>c.district===name), em = cl.filter(c=>c.emerg).length;
     bits.push(`${cl.length} closure(s)${em? ` (<b style="color:#d03b3b">${em} EMERGENCY</b>)`:""}`); }
@@ -1375,6 +1381,29 @@ function updatePumpTile(withReading){
   const inHot = pumpsList.filter(p=>hotD.includes(p.district));
   elV.textContent = inHot.length;
   elN.textContent = `in ${hotD.length} hot district(s)`;
+}
+// Storm ponds / stormwater management facilities (72ee-mmkx, 370 STORM polygons — shown as
+// centroid markers). STATIC inventory: no real-time level/capacity feed exists on the open
+// portal (that telemetry is EPCOR-internal SCADA), so this layer answers "where do crews go
+// to pre-inspect", not "how full is it".
+let pondsList = null;
+async function loadPonds(){
+  if (!pondLayer) return;
+  try{
+    const rows = await fetch("https://data.edmonton.ca/resource/72ee-mmkx.json?$select=latitude,longitude,neighbourhood_name,road_name,year_const&$where=type='STORM'&$limit=500").then(r=>r.json());
+    pondsList = rows.map(p=>({lat:parseFloat(p.latitude), lon:parseFloat(p.longitude)}))
+                    .filter(p=>Number.isFinite(p.lat));
+    rows.forEach(p=>{
+      const lat=parseFloat(p.latitude), lon=parseFloat(p.longitude);
+      if (!Number.isFinite(lat)) return;
+      const m = L.marker([lat,lon],{icon: L.divIcon({className:"",
+        html:`<div style="width:12px;height:12px;border-radius:50%;background:#7ec4cf;border:2px solid #2a7885"></div>`,
+        iconSize:[12,12], iconAnchor:[6,6]})});
+      m.bindPopup(`<b>Storm pond (SWM facility)</b><br>${p.neighbourhood_name||""}${p.road_name? " · "+p.road_name:""}${p.year_const? " · built "+p.year_const:""}<br>
+        <span style="color:#898781;font-size:10.5px">Static inventory — no public real-time level data; pre-inspect for blockage before severe weather.</span>`);
+      pondLayer.addLayer(m);
+    });
+  }catch(e){ console.warn("storm pond layer unavailable", e); }
 }
 async function loadPumps(){
   if (!pumpLayer) return;
@@ -1560,21 +1589,8 @@ function districtCtxCell(district){
     <div style="white-space:nowrap;font-size:12px"><span style="color:#eda100;font-weight:700">!</span> ${hot(c.cl)} closure${c.cl===1?"":"s"}${c.em? ` <b style="color:var(--band-5)">${c.em} EMERG</b>`:""}</div>`;
 }
 
-// compact in-table version of the popup chart: same session buffer, no axes
-function sparkline(buf, station){
-  const pts = buf.map(s => s.st[station]? {t:s.t, mm:s.st[station][0]} : null).filter(Boolean);
-  if (pts.length < 2) return `<span style="color:var(--ink-muted);font-size:10.5px">builds over session</span>`;
-  const W=124, H=30, pad=3, padR=44; // right gutter for the end-point total label
-  const t0=pts[0].t, tr=(pts[pts.length-1].t-t0)||1;
-  const yMax=Math.max(1, Math.max(...pts.map(p=>p.mm)));
-  const X=t=>pad+(t-t0)/tr*(W-pad-padR), Y=v=>(H-pad)-(v/yMax)*(H-2*pad);
-  const d=pts.map((p,i)=>(i?"L":"M")+X(p.t).toFixed(1)+","+Y(p.mm).toFixed(1)).join("");
-  const last=pts[pts.length-1], ly=Math.min(H-5, Math.max(9, Y(last.mm)+3.5));
-  return `<svg width="${W}" height="${H}" style="display:block" role="img" aria-label="session rainfall line for ${station}">
-    <path d="${d}" fill="none" stroke="var(--seq-450)" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.mm).toFixed(1)}" r="2.5" fill="var(--seq-450)"/>
-    <text x="${(X(last.t)+6).toFixed(1)}" y="${ly.toFixed(1)}" font-size="10.5" font-weight="650" fill="var(--ink-1)">${last.mm.toFixed(1)} mm</text></svg>`;
-}
+// (in-table sparkline removed 2026-07-14 — its column now shows the per-station next-24h
+//  forecast; the full session line chart still lives in each gauge's dot popup)
 
 // ---------- filters ----------
 function filterValues(){
@@ -1604,7 +1620,7 @@ let sortState = {k:"rating", dir:-1};
 document.querySelectorAll("#tbl th[data-k]").forEach(th => th.addEventListener("click", ()=>{
   const k = th.dataset.k;
   if (sortState.k === k) sortState.dir *= -1;
-  else sortState = {k, dir: (k==="mm"||k==="rating"||k==="action")? -1 : 1};
+  else sortState = {k, dir: (k==="mm"||k==="fc"||k==="rating"||k==="action")? -1 : 1};
   rerender();
 }));
 // human-adjustable column widths: drag the right edge of any header cell
@@ -1785,6 +1801,13 @@ function render(rows){
   if (pre.length) prio.push({c:"var(--band-3)", verb:"PRE-POSITION", txt:`Rain is rising at Monitor stations in ${byDistrict(pre)} — stage crews nearby.`});
   const falling = trends.filter(x=>x.t && x.t.dir.includes("falling") && x.s.hasReading && x.s.rating>=4).map(x=>x.s);
   if (falling.length) prio.push({c:"var(--band-0)", verb:"REASSESS", txt:`Rainfall is easing in ${byDistrict(falling)} — consider standing down staged resources after the next publish.`});
+  // severe weather is coming but hasn't landed: the window to clear blockages is NOW.
+  // No real-time pond/sewer capacity feed exists on the open portal (EPCOR SCADA is
+  // internal), so the duty is a physical pre-inspection of the static assets.
+  if (fcExtreme) prio.push({c:"var(--band-3)", verb:"PRE-INSPECT", txt:
+    `Severe weather is forecast within 24 h — before it lands, send crews to check pump stations,
+     storm ponds and catch basins for blockage or needed repairs (enable the pump &amp; storm-pond
+     map layers; start with the highest-forecast districts in the table's Next-24h column).`});
   if (blind.length) prio.push({c:"var(--ink-muted)", verb:"VERIFY", txt:`No data from ${blind.join(", ")} — treat as blind spots and confirm conditions by field report.`});
   if (lastEmergDisruptions > 0) prio.push({c:"var(--band-5)", verb:"ROUTE AROUND", txt:`${lastEmergDisruptions} emergency road closure(s) are in effect — plan crew routes around them.`});
   document.getElementById("prioList").innerHTML = prio.length?
@@ -1816,6 +1839,7 @@ function render(rows){
     station: (a,b)=> a.s.station.localeCompare(b.s.station),
     district: (a,b)=> (a.s.district||"~").localeCompare(b.s.district||"~"),
     mm: (a,b)=> (a.s.mm||0)-(b.s.mm||0),
+    fc: (a,b)=> (stationFc[a.s.station]??-1)-(stationFc[b.s.station]??-1),
     rating: (a,b)=> (a.s.rating||0)-(b.s.rating||0) || (a.s.mm||0)-(b.s.mm||0),
     action: (a,b)=> (a.s.rating||0)-(b.s.rating||0),
     says: (a,b)=> a.s.desc.localeCompare(b.s.desc)
@@ -1847,7 +1871,7 @@ function render(rows){
         title="click: 4 nearest live cameras in/near this district">${district}</a>` : district}</td>
       <td>${districtCtxCell(district)}</td>
       <td class="num"><span class="mmbar" style="width:${(s.mm/maxMm*36).toFixed(0)}px"></span>${s.mm.toFixed(1)}</td>
-      <td>${sparkline(buf, s.station)}</td>
+      <td class="num">${stationFcCell(s.station)}</td>
       <td style="max-width:200px"><span class="chip" style="background:${chipBg};color:${inkOn(chipBg)}">${b.icon} ${s.rating} ${b.name}</span><div style="font-size:12px;font-weight:600;margin-top:3px">${b.action}${t && !t.dir.includes("steady")? `<br><span class="trend" style="color:${t.color};font-weight:650;font-size:11.5px">${t.dir} (session)</span>` : ""}</div></td>
       <td class="desc-cell">${s.desc}</td>
     </tr>`;
@@ -1912,6 +1936,40 @@ function applyContextFilter(){
   });
 }
 
+// ---------- per-station next-24h precipitation forecast (Open-Meteo multi-point) ----------
+// Replaces the session sparkline column (user request): a forward-looking mm number per
+// gauge beats a backward-looking flat line for the pre-positioning call. One batched call —
+// Open-Meteo accepts comma-separated coordinate lists — cached 30 min. Model forecast;
+// gauges remain ground truth. The per-station 24h session line still lives in the dot popup.
+let stationFc = {}, stationFcMax = 1, stationFcAt = 0;
+let fcExtreme = false; // set by loadForecast; drives the PRE-INSPECT priority
+function stationFcCell(st){
+  const v = stationFc[st];
+  if (v==null) return `<span style="color:var(--ink-muted)">…</span>`;
+  return `<span class="mmbar" style="width:${(v/stationFcMax*36).toFixed(0)}px;background:var(--band-3)"></span>${v.toFixed(1)}`;
+}
+async function loadStationFc(){
+  if (Date.now()-stationFcAt < 30*60*1000 && Object.keys(stationFc).length) return;
+  const sts = lastStations.filter(s=>s.lat!=null);
+  if (!sts.length) return;
+  try{
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=" + sts.map(s=>s.lat.toFixed(3)).join(",") +
+      "&longitude=" + sts.map(s=>s.lon.toFixed(3)).join(",") +
+      "&hourly=precipitation&forecast_days=2&timezone=America%2FEdmonton";
+    let res = await fetch(url).then(r=>r.json());
+    if (!Array.isArray(res)) res = [res]; // single-point responses arrive unwrapped
+    stationFc = {};
+    res.forEach((r,i)=>{
+      const H = r.hourly; if (!H) return;
+      const idx = Math.max(0, H.time.findIndex(t=>Date.parse(t)>=Date.now()));
+      stationFc[sts[i].station] = H.precipitation.slice(idx, idx+24).reduce((a,p)=>a+(p||0),0);
+    });
+    stationFcMax = Math.max(1, ...Object.values(stationFc));
+    stationFcAt = Date.now();
+    rerender();
+  }catch(e){ console.warn("per-station forecast unavailable", e); }
+}
+
 // ---------- forecast (Open-Meteo, CORS-open, no key) ----------
 // Answers the supervisor's forward question the gauges cannot: "will it build?"
 let fcCache = {t:0};
@@ -1931,6 +1989,7 @@ async function loadForecast(){
     const fmtH = t=>new Date(t).toLocaleTimeString("en-CA",{hour:"numeric"});
     // extreme-weather flag: heavy total, an intense hour, or damaging gusts
     const extreme = tot>=cfg.extremeTot || peak.p>=cfg.extremeHr || maxGust>=70;
+    if (extreme !== fcExtreme){ fcExtreme = extreme; rerender(); } // drives the PRE-INSPECT priority
     const brief = tot<0.2?
       `no meaningful ${cfg.word} expected · max gusts ${maxGust.toFixed(0)} km/h` :
       `heaviest ≈ ${peak.p.toFixed(1)} ${cfg.unit}/h around ${fmtH(peak.t)} · max gusts ${maxGust.toFixed(0)} km/h`;
@@ -1997,6 +2056,7 @@ async function load(){
     render(rows);
     loadClosures(); // context layers refresh on the same cycle; failures are non-fatal
     loadForecast();
+    loadStationFc();
     loadEccc();
   }catch(e){
     // keep the last-known data-as-of visible: the numbers still on screen have an age,

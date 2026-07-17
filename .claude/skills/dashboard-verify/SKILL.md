@@ -167,6 +167,17 @@ against the source independently.
    boundary polygons; there are no `#mapMetricSel`/`#densityBoundarySel` selects anymore.
    The Tracking (rain/snow) header select remains a dropdown and must still swap the 311
    layer label without errors (the ECCC radar-product swap inside `setTrackMode` is gone).
+8c. **Next-24h forecast column + PRE-INSPECT (2026-07-14)** — the table's 5th column is the
+   per-station next-24h precipitation forecast (`stationFcCell`, amber mm bar), fed by ONE
+   batched Open-Meteo multi-point call (`loadStationFc`, all 23 coords comma-separated,
+   30-min cache), sortable via `data-k="fc"` (numeric, desc-first). It REPLACED the in-table
+   session sparkline (removed; the session line chart still lives in each gauge's dot
+   popup — don't re-add a sparkline column). "Storm ponds (SWM facilities)" is a default-off
+   layer (`72ee-mmkx`, 370 teal centroid markers; static inventory — NO real-time pond/sewer
+   capacity feed exists on the open portal, that's EPCOR-internal SCADA; the popup says so).
+   When `loadForecast` sets `fcExtreme`, the priorities list gains a PRE-INSPECT item
+   (check pumps/ponds/catch basins for blockage BEFORE the storm); it disappears when the
+   forecast calms. District popups' crew context includes the pond count.
 9c. **Area search (`#areaSearch`, added 2026-07-14)** — type-ahead over 15 districts +
    407 neighbourhoods (nei polygons lazy-load on first focus via `loadNeighbourhoods`).
    ≥2 chars shows up to 12 matches in `#areaSuggest`; click or Enter calls `gotoArea()`,
