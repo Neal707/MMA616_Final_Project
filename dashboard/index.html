@@ -27,11 +27,10 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--page);color:var(--ink-1);
     font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
-  h1{font-size:17px;margin:0;font-weight:650}
-  .sub{color:var(--ink-2);font-size:12.5px;margin-top:2px}
+  h1{font-size:24px;margin:0;font-weight:700}
   header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .stamp{color:var(--ink-1);font-size:12.5px;text-align:left}
-  .stamp b{color:var(--ink-1);font-weight:600}
+  .stamp{color:var(--ink-1);font-size:15.5px;text-align:left}
+  .stamp b{color:var(--ink-1);font-weight:700}
   .stamp .stale{color:var(--band-5);font-weight:650}
   .stamp .quiet{color:var(--band-3);font-weight:600}
   button{font:inherit;font-size:12.5px;padding:5px 12px;border:1px solid var(--ring);
@@ -232,12 +231,11 @@
 <header>
   <div>
     <h1>Edmonton Storm Response — 24h Rainfall &amp; Storm Severity</h1>
-    <div class="sub">Drainage Operations duty view · 23-gauge network · City of Edmonton open data (x4rm-mppc)</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-top:7px;flex-wrap:wrap">
+    <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
       <div class="stamp" id="stamp">loading…</div>
       <button id="refreshBtn">Refresh now</button>
-      <label style="font-size:12.5px;display:flex;gap:6px;align-items:center">Tracking
-        <select id="trackSel" style="font:inherit;padding:3px 6px;border:1px solid var(--ring);border-radius:6px;background:var(--surface-1);color:var(--ink-1)">
+      <label style="font-size:15px;font-weight:650;display:flex;gap:7px;align-items:center">Tracking
+        <select id="trackSel" style="font:inherit;font-size:15px;padding:5px 9px;border:1px solid var(--ring);border-radius:6px;background:var(--surface-1);color:var(--ink-1)">
           <option value="rain">🌧 Rainfall (summer)</option>
           <option value="snow">❄ Snowfall (winter)</option>
         </select>
@@ -689,6 +687,13 @@ function initMap(){
   }
   // markers added while a layer was hidden get fresh DOM on toggle-on — re-apply the filter
   map.on("overlayadd", ()=>setTimeout(applyContextFilter, 0));
+  // clicking the basemap / outside the city clears any area selection (polygon clicks
+  // stopPropagation, so this only fires on genuinely empty ground)
+  map.on("click", ()=>{
+    if (selectedNei) toggleNeiSelection(selectedNei);
+    const fD = document.getElementById("fDistrict");
+    if (fD.value){ fD.value=""; fD.dispatchEvent(new Event("change")); }
+  });
   loadCameras();
   loadPumps();
   loadWards();
@@ -837,7 +842,7 @@ function loadWards(){ // name kept for the initMap call; loads districts
           });
           // clicking the polygon selects the district (vivid) and fades the rest —
           // same path as the heatmap row labels; click again to clear
-          lyr.on("click", ()=>toggleDistrictSelection(f.properties.name));
+          lyr.on("click", e=>{ L.DomEvent.stopPropagation(e); toggleDistrictSelection(f.properties.name); });
         }
       });
       wardLayer.addLayer(districtGeoJSON);
@@ -1116,7 +1121,7 @@ function updateBoundaryLayer(){
           lyr.bindPopup(()=>neiPopup(f.properties), {maxWidth:280, offset:L.point(0,-22)});
           lyr.on("popupopen", ()=>fill311PopupStats([f.properties.name]));
           // spotlight just this neighbourhood — NOT its whole district (user request)
-          lyr.on("click", ()=>toggleNeiSelection(f.properties.name));
+          lyr.on("click", e=>{ L.DomEvent.stopPropagation(e); toggleNeiSelection(f.properties.name); });
         }
       });
     } else neiGeoJSON.setStyle(f=>neiStyle(f.properties.name, f.properties.district));
