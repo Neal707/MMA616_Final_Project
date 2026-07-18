@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edmonton Storm Response — MMA 616 Final Project</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#14181d; --muted:#5b6672;
+    --line:#e3e7ec; --accent:#12447e; --accent-ink:#ffffff; --shadow:rgba(20,24,29,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1216; --panel:#171b21; --ink:#e8ecf1; --muted:#9aa5b1;
+      --line:#262c34; --accent:#5a92d6; --accent-ink:#0f1216; --shadow:rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:40px 20px; display:flex; justify-content:center;
+  }
+  .wrap{width:100%; max-width:760px}
+  .kicker{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px}
+  h1{font-size:30px; line-height:1.2; margin:0 0 10px}
+  .lede{color:var(--muted); margin:0 0 28px; font-size:17px}
+  .cards{display:grid; gap:16px; grid-template-columns:1fr}
+  @media(min-width:640px){.cards{grid-template-columns:1fr 1fr}}
+  a.card{
+    display:block; text-decoration:none; color:inherit; background:var(--panel);
+    border:1px solid var(--line); border-radius:14px; padding:22px 20px;
+    box-shadow:0 1px 3px var(--shadow); transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  a.card:hover{transform:translateY(-2px); box-shadow:0 6px 18px var(--shadow); border-color:var(--accent)}
+  .card .tag{
+    display:inline-block; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    background:var(--accent); color:var(--accent-ink); border-radius:999px; padding:3px 10px; margin-bottom:12px;
+  }
+  .card h2{font-size:19px; margin:0 0 6px}
+  .card p{margin:0; color:var(--muted); font-size:14px}
+  .card .go{margin-top:14px; font-weight:600; color:var(--accent); font-size:14px}
+  .note{
+    margin-top:26px; padding:14px 16px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; font-size:13px; color:var(--muted);
+  }
+  .foot{margin-top:26px; font-size:13px; color:var(--muted)}
+  code{background:var(--line); padding:1px 6px; border-radius:5px; font-size:.9em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">MMA 616 · Individual Final Project</p>
+  <h1>Edmonton Rainfall &amp; Storm Severity Dashboard</h1>
+  <p class="lede">An AI-built decision-support workspace for an EPCOR / City of Edmonton drainage-operations
+  duty supervisor — turning 23 live rain-gauge readings into a next-30-minutes dispatch, barricade, and
+  escalation call.</p>
+
+  <div class="cards">
+    <a class="card" href="dashboard/index.html">
+      <span class="tag">Live</span>
+      <h2>Launch the dashboard →</h2>
+      <p>The four-tab workspace (Station data · Maps · Weather forecast · Stats). Fetches live City of
+      Edmonton, EPCOR and Environment Canada feeds directly in your browser — no backend.</p>
+      <div class="go">Open the live dashboard</div>
+    </a>
+    <a class="card" href="submission/MMA616-individual-final.html">
+      <span class="tag">Write-up</span>
+      <h2>Read the project report →</h2>
+      <p>The workspace, evidence of use, screenshots, the T1–T8 evaluation and <code>/evaluate</code>
+      workflow, the write-up, and the distinctness statement — one self-contained page.</p>
+      <div class="go">Open the write-up</div>
+    </a>
+  </div>
+
+  <div class="note"><b>Live data.</b> The dashboard reads open, CORS-enabled public feeds at load time
+  and stamps every readout with its data-as-of time (converted to Mountain time). Rainfall gauges report
+  May–October; outside that window the feed is inactive, which the dashboard flags rather than showing as
+  zero rain.</div>
+
+  <p class="foot">neal liu · MMA 616 · City of Edmonton dataset <code>x4rm-mppc</code> — 24 Hour Rainfall
+  Totals &amp; Storm Severity Ratings.</p>
+</div>
+</body>
+</html>
