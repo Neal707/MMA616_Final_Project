@@ -71,6 +71,9 @@ much the data can be trusted right now.
 - `.claude/skills/` — project skills: `edmonton-rainfall-metadata` (dataset metadata library —
   consult before any query or metric), `storm-assessment` (live duty-supervisor briefing),
   `dashboard-verify` (end-to-end dashboard checks after any edit).
+- `.claude/agents/dashboard-critic.md` — subagent: skeptical reviewer from the duty-supervisor's chair.
+- `.claude/commands/evaluate.md` — the `/evaluate` workflow: verify → run the T1–T8 test set
+  against the live feed → run the critic → pass/fail scorecard. Run before every ship.
 - `knowledge/data-dictionary.md`, `data-profile.md`, `data-cautions.md`, `research/domain-*.md` —
   **Calgary 311 exemplars from the course; a different dataset. Do not apply their rules here.**
 

@@ -43,7 +43,7 @@ building-vs-easing trend that the raw feed cannot show.
 <h2>1 · The workspace</h2>
 <p>The workspace is a Claude Code project organized around a <code>CLAUDE.md</code>, connected to the
 City of Edmonton open-data feed <b>24 Hour Rainfall Totals and Storm Severity Ratings</b>
-(<code>x4rm-mppc</code>) as a live SODA API source, with three project skills, one critic subagent, and a
+(<code>x4rm-mppc</code>) as a live SODA API source, with three project skills, one critic subagent, an <code>/evaluate</code> pre-ship workflow, and a
 single-file live HTML dashboard (a four-tab workspace) as the demonstration interface.</p>
 
 <h3>The living spec — CLAUDE.md</h3>
@@ -91,6 +91,7 @@ single-file live HTML dashboard (a four-tab workspace) as the demonstration inte
 <tr><td><code>storm-assessment</code></td><td>Skill</td><td>Produces the duty-supervisor briefing on demand: fetches live, computes the seven metrics, answers in a fixed briefing shape that leads with the data-as-of stamp and flags blind spots.</td></tr>
 <tr><td><code>dashboard-verify</code></td><td>Skill</td><td>The evaluation harness: serves the dashboard, cross-checks every KPI against independent SoQL queries, exercises the trend-buffer, failure, filter, camera, EPCOR and stats-chart paths — a growing end-to-end suite (now ~17 sections), all must pass after any edit.</td></tr>
 <tr><td><code>dashboard-critic</code></td><td>Subagent</td><td>Skeptical reviewer that judges the dashboard strictly from the supervisor's chair (wrong-decision risk → decision latency → data honesty → encoding correctness → robustness) and recomputes any number it critiques against the live feed.</td></tr>
+<tr><td><code>/evaluate</code></td><td>Workflow</td><td>Pre-ship evaluation that strings the pieces into one gate: serve &amp; verify (<code>dashboard-verify</code>) &rarr; run the T1&ndash;T8 test set against the live feed (independent recompute, not the UI) &rarr; run <code>dashboard-critic</code> &rarr; print a pass/fail scorecard. Any FAIL blocks ship. (<code>.claude/commands/evaluate.md</code>)</td></tr>
 </table>
 
 <h3>Governance</h3>
@@ -168,6 +169,7 @@ underlying metrics are unchanged.</div>
 <p>Per the course method, the evaluation tests the <b>output</b>, not the code: are the numbers the
 supervisor acts on recomputable from the live source, and does the narrative stay honest about
 freshness, blind spots, and history?</p>
+<p>The whole check is packaged as the repeatable <code>/evaluate</code> workflow (<code>.claude/commands/evaluate.md</code>): serve &amp; verify &rarr; recompute the T1&ndash;T8 set from the live feed &rarr; run the critic &rarr; scorecard; it is re-run before every ship. Most recent run (Jul 18 2026, 11:32&nbsp;MT, a quiet day &mdash; all gauges rating 0): T1&ndash;T4 and T8 PASS against independent recompute (alert = NORMAL; worst gauge 0.0&nbsp;mm @ RG17 = numeric max; stations &ge;4 = 0; stamp 11:32&nbsp;MT = newest <code>:updated_at</code>; DOWNTOWN heatmap total 3 = independent SoQL 3).</p>
 
 <h3>Test set</h3>
 <table>
