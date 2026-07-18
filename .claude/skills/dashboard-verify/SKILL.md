@@ -88,9 +88,11 @@ against the source independently.
    text: day on top, a `.fcnight` section with night icon / "night N°C" / condition below a
    divider), a leading "Tonight" gets its own card, official weathericons GIFs, "Forecast
    issued … MT" line, 30-min cache. Each card shows its calendar date (`.dd`, "Jul 13" —
-   card i = today + i days, Edmonton time). Below the grid, `.fcsum` renders every period's
-   full ECCC textSummary as aligned `.row` grid rows (period name + date + chips in a left
-   column, text right; night rows indented/muted under their day). NO iframe — this replaced
+   card i = today + i days, Edmonton time). Below the grid, `.fcsum` renders the full ECCC
+   textSummary as aligned `.row` grid rows (period name + date + chips left, text right; night
+   rows indented/muted). It is limited to TODAY + TOMORROW only (day index ≤1, user request
+   2026-07-18) — the 7-day card strip above stays the full overview; do not expand the summary
+   back to all periods. NO iframe — this replaced
    the cropped weather.gc.ca embed (fragile to alert banners); don't reintroduce one. The
    same payload's `warnings` drives the "Weather alerts — Edmonton" KPI tile ("None" when
    clear; red count + event names when active). On API failure both degrade to explicit
@@ -260,8 +262,28 @@ against the source independently.
 8e. **Stats tab (2026-07-17)** — three combo charts (stacked bars + comparison line), all
    rendered by the shared `comboChart()` SVG helper (ONE y axis per chart — never dual-axis),
    lazily fetched on first open (`loadStats()`; `statLoaded` flags):
-   - **Monthly precipitation / snowfall** (`#statPrecip`): bars = this year's monthly
-     totals, line = previous-5-full-years same-month average with a "5-yr avg" tag pinned
+   - **Chart size / EPCOR color / date link (2026-07-18):** the stats "cells" (`#sideStats
+     .panel`) are `max-width:91%` CENTERED (`margin-left/right:auto`); the chart SVGs fill their
+     cell at `width:100%` (shrink/grow the PANEL, never the SVG). Each stats chart's descriptive
+     note is a collapsed `<details class="helpnote">` (data leads; 4 of them). Map default
+     layers = **District severity fill + 311 flood reports ONLY** (2026-07-18) — gauges, EPCOR,
+     ponds, pumps, closures, cameras all OFF; `buildToggles` now enforces the initial on/off on
+     the map (layers are pre-added in initMap, so an unchecked default must be removed + fire
+     overlayremove), and `#epcorLegend` starts inline `display:none` (its show/hide hook is
+     registered after buildToggles, so it can't rely on the build-time fire). Shift-brief all-clear statuses show
+     just the word, enlarged: bfChange steady → `<span class="bvbig">steady</span>`, bfBlind
+     none → `<span class="bvbig">none</span>` (suffixes "no gauge moving…"/"all N gauges
+     reporting" removed; `.brief .bvbig` = 21px). Warning states keep their station lists. EPCOR uses a single-hue color VALUE ramp
+     EVERYWHERE now — map markers (`EPCOR_VAL = {act:#12447e, res:#5a92d6, pln:#bcd4ef}`, all
+     circles, `epcorIcon`), the `#epcorLegend` chips, the modal mini-map (`drawMiniMarkers`
+     `EK = EPCOR_VAL`), and the stats chart — never the old red/green/orange hues. Default map
+     layers = district fill + gauges + 311 + EPCOR ON, everything else OFF (user "match the
+     screenshot"). The `#statPrecip` chart is LINKED to the shared date range: bars = the
+     latest year in [From,To], line = same-month average of the earlier years in range; the
+     From/To change handler calls `loadStatPrecip()` too (cache key = mode|from|to). Verified:
+     From=2024 → "2026 vs 2024–2025 average".
+   - **Monthly precipitation / snowfall** (`#statPrecip`): bars = the range's latest year monthly
+     totals, line = earlier-years-in-range same-month average with an "avg" tag pinned
      at its right end (comboChart `line.tag`). MODE-AWARE: rain tracking = ECCC Blatchford
      `total_precipitation_mm` via `s4ws-tdws` (the separate rain/snow columns end Dec 2025
      at every current station — verified); snow tracking = Open-Meteo ERA5 archive
@@ -279,17 +301,27 @@ against the source independently.
      `#stat311From`/`#stat311To` date inputs (defaults = full source range; swapped-order
      input auto-corrects; changing them re-queries BOTH this chart and the comparison
      hbar below).
-   - **311 area comparison** (`#statCmp`): `hbarChart()` horizontal bars, biggest first —
-     all 15 districts (neighbourhood roll-up) or top-20 neighbourhoods via `#statCmpBtns`;
-     same category filter + date range as the monthly chart; reports without a
-     neighbourhood tag are excluded (caption says so).
-   - **Tooltips are integers** for 311 + EPCOR charts (`dec:0` → `Math.round` +
-     thousands separators, e.g. "10,944 reports"); precip/snowfall keeps 1 decimal
-     (`dec:1`) since mm/cm fractions are meaningful.
-   - **EPCOR incidents by district** (`#statEpcor`): stacked act/res/pln per district + total
-     line, from `epcorList` (the live snapshot; refreshed by `loadEpcor`). EPCOR publishes NO
-     public history — the caption must keep saying this is "right now", and no fake time
-     series may be invented for it.
+   - **Shared top filter (2026-07-18)** — the Stats tab opens with a "Filters" panel:
+     `#stat311From`/`#stat311To` dates + `#statCatBtns` category checkboxes (snow / flood /
+     extreme). BOTH drive BOTH 311 charts (monthly + comparison) via `statCatClause()` (ORs the
+     ticked `CAT311` buckets; nothing ticked → `(1=0)` = no rows) and `stat311Range()`. The
+     precipitation chart (climate records) and EPCOR (live snapshot) have their own sources and
+     ignore these — the panel note says so; that's the honest handling of "one filter for all
+     charts", not a bug.
+   - **311 area comparison** (`#statCmp`, 2026-07-18): now a **100%-stacked composition** via
+     `pctBarChart()` — each district/neighbourhood bar is full width, split by category SHARE
+     (flood/snow/extreme, `CAT_COLOR`), % labels inside wide segments, raw total at the right;
+     sorted by total, top-20 in neighbourhood mode. Query groups by `neighbourhood,
+     service_description` and buckets client-side with `catOf()`. Answers "which weather problem
+     dominates each area", follows the shared date+category filter (verified: unticking Snow
+     drops all snow segments; neighbourhood mode = 20 rows).
+   - **Tooltips are integers** for 311 + EPCOR charts (`dec:0`); precip/snowfall keeps 1 decimal.
+   - **EPCOR incidents by district** (`#statEpcor`, recolored 2026-07-18): stacked act/res/pln
+     per district, colored by a **single-hue VALUE ramp** (`#12447e` active → `#5a92d6`
+     restoring → `#c3dcf5` planned; darkest = most urgent), NOT categorical hues (user request).
+     Line = **average incidents per district** (a flat reference), tagged "avg" — EPCOR has NO
+     public history so a real 5-year-average is impossible; the per-district average stands in,
+     and the caption must keep saying so. No fake time series may be invented for EPCOR.
    `showSidePane("maps")` must call `map.invalidateSize()` after reveal — Leaflet inits against
    the hidden 0-size container (verified: 984×520 after reveal). Clicking a DISTRICT name in the table now switches to
    the Maps pane, selects/highlights that district (same `toggleDistrictSelection` path:
