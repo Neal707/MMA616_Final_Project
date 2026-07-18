@@ -260,11 +260,14 @@ against the source independently.
 8e. **Stats tab (2026-07-17)** — three combo charts (stacked bars + comparison line), all
    rendered by the shared `comboChart()` SVG helper (ONE y axis per chart — never dual-axis),
    lazily fetched on first open (`loadStats()`; `statLoaded` flags):
-   - **Monthly precipitation** (`#statPrecip`): bars = this year's monthly totals, line =
-     previous-5-full-years same-month average. Source: ECCC daily records, EDMONTON
-     BLATCHFORD, via SoQL sum on `s4ws-tdws`. Uses `total_precipitation_mm` for BOTH track
-     modes — the separate rain/snow columns end Dec 2025 at every current station (verified),
-     so total precipitation is the only continuous official series; the caption says so.
+   - **Monthly precipitation / snowfall** (`#statPrecip`): bars = this year's monthly
+     totals, line = previous-5-full-years same-month average with a "5-yr avg" tag pinned
+     at its right end (comboChart `line.tag`). MODE-AWARE: rain tracking = ECCC Blatchford
+     `total_precipitation_mm` via `s4ws-tdws` (the separate rain/snow columns end Dec 2025
+     at every current station — verified); snow tracking = Open-Meteo ERA5 archive
+     `snowfall_sum` (cm) — the only continuous snowfall series into the current year, and
+     the caption must keep calling it reanalysis estimates, not gauge data. `setTrackMode`
+     refreshes the chart if the pane is open (`statLoaded.precip` caches per mode).
    - **311 weather reports by month** (`#stat311`): stacked open (amber) / closed (blue) by
      month opened, line = same-calendar-month average across all years on record. MUST query
      with `WEATHER311_CATS` (categories only), NOT `WEATHER311_WHERE` — the map constant has
@@ -272,7 +275,17 @@ against the source independently.
      built (verified fix: Jan 23 shows ~10.9k closed). Source starts Jan 2023 → a true
      5-year average doesn't exist; caption labels the line "all years on record". Area
      convertible via `#statAreaBtns` (Whole city / District / Neighbourhood) + `#statAreaSel`
-     (district mode rolls up that district's neighbourhoods via `neiFeats`).
+     (district mode rolls up that district's neighbourhoods via `neiFeats`), plus
+     `#stat311From`/`#stat311To` date inputs (defaults = full source range; swapped-order
+     input auto-corrects; changing them re-queries BOTH this chart and the comparison
+     hbar below).
+   - **311 area comparison** (`#statCmp`): `hbarChart()` horizontal bars, biggest first —
+     all 15 districts (neighbourhood roll-up) or top-20 neighbourhoods via `#statCmpBtns`;
+     same category filter + date range as the monthly chart; reports without a
+     neighbourhood tag are excluded (caption says so).
+   - **Tooltips are integers** for 311 + EPCOR charts (`dec:0` → `Math.round` +
+     thousands separators, e.g. "10,944 reports"); precip/snowfall keeps 1 decimal
+     (`dec:1`) since mm/cm fractions are meaningful.
    - **EPCOR incidents by district** (`#statEpcor`): stacked act/res/pln per district + total
      line, from `epcorList` (the live snapshot; refreshed by `loadEpcor`). EPCOR publishes NO
      public history — the caption must keep saying this is "right now", and no fake time

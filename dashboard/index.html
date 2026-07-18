@@ -292,10 +292,10 @@
 <div class="seasonbar" id="seasonbar">ℹ Off-season (Nov–Apr): rainfall is not measured. Quiet readings mean the feed is inactive, not dry conditions.</div>
 
 <div class="tabbar" id="topTabs">
-  <button id="tabBtnTable" class="active" type="button">📋 Station data</button>
-  <button id="tabBtnMaps" type="button">🗺 Maps</button>
-  <button id="tabBtnForecast" type="button">🌦 Weather forecast</button>
-  <button id="tabBtnStats" type="button">📊 Stats</button>
+  <button id="tabBtnTable" class="active" type="button">Station data</button>
+  <button id="tabBtnMaps" type="button">Maps</button>
+  <button id="tabBtnForecast" type="button">Weather forecast</button>
+  <button id="tabBtnStats" type="button">Stats</button>
 </div>
 <div id="tabOps">
  <div class="sidewrap">
@@ -561,11 +561,7 @@
  <div id="sideStats" class="sidepane">
   <div class="panel" style="margin-bottom:14px">
     <h2 id="statPrecipTitle">Monthly precipitation — 5-year average vs this year (ECCC Blatchford)</h2>
-    <div class="note">Bars = this year's monthly total to date · line = same-month average of the
-      previous 5 full years (2021–2025). Source: Environment Canada daily records, Blatchford
-      station (city centre), via Edmonton open data <code>s4ws-tdws</code>. ECCC's separate
-      rain/snow columns ended Dec 2025, so both tracking modes chart <b>total precipitation</b>
-      (rain + snow water equivalent) — the continuous official series.</div>
+    <div class="note" id="statPrecipNote">loading…</div>
     <div id="statPrecip" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
   <div class="panel" style="margin-bottom:14px">
@@ -578,12 +574,29 @@
         <button type="button" class="segbtn" data-v="neighbourhood">Neighbourhood</button>
       </span>
       <select id="statAreaSel" style="display:none;max-width:230px"></select>
+      <label>From <input type="date" id="stat311From" min="2023-01-01"></label>
+      <label>To <input type="date" id="stat311To" min="2023-01-01"></label>
     </div>
     <div class="note">Stacked bars = weather-related 311 reports opened that month, split by
       today's status (amber = still open · blue = closed) · line = that calendar month's
       average across all years on record. Source starts <b>Jan 2023</b> — a full 5-year 311
       average does not exist; the line is the all-available-years average (2023→).</div>
     <div id="stat311" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
+  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>311 weather reports — district / neighbourhood comparison</h2>
+    <div class="mapmode-row" style="padding:0 14px 6px">
+      <label>Compare</label>
+      <span class="segwrap" id="statCmpBtns">
+        <button type="button" class="segbtn active" data-v="district">Districts</button>
+        <button type="button" class="segbtn" data-v="neighbourhood">Top 20 neighbourhoods</button>
+      </span>
+    </div>
+    <div class="note">Horizontal bars = weather-related 311 reports (all statuses, biggest
+      first) in the <b>date range set above</b> — change the From/To fields and this chart
+      follows. District bars roll up their neighbourhoods; reports without a neighbourhood
+      tag can't be placed and are excluded.</div>
+    <div id="statCmp" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
   <div class="panel" style="margin-bottom:14px">
     <h2>EPCOR water incidents by district — current snapshot</h2>
@@ -2701,6 +2714,9 @@ function setTrackMode(mode){
   loadForecast();          // recompute the 24h brief + crew window on the mode's variable
   stationFcAt = 0;         // force the per-station column to re-fetch on the mode's variable
   loadStationFc();
+  // Stats chart A follows the mode (rain = ECCC precip, snow = ERA5 snowfall);
+  // refresh immediately if the pane is open, else it reloads lazily on next open
+  if (document.getElementById("sideStats").classList.contains("active")) loadStatPrecip();
   rerender();
 }
 // mode-dependent static text: map panel title, map legend's 311 phrase/red meaning, and the
@@ -2723,13 +2739,17 @@ if (trackMode==="snow" && setWindyOverlay) setWindyOverlay(trackCfg().windyOverl
 document.getElementById("trackSel").value = trackMode;
 document.getElementById("trackSel").addEventListener("change", e=>setTrackMode(e.target.value));
 
-// ---------- Stats tab: three combo charts (stacked bars + line), hand-rolled SVG ----------
-// One shared renderer so the three charts read as one system. Bars are the period values,
-// the line is the comparison series; one y axis (same unit) — never a dual axis.
-function comboChart({labels, series, line, unit, xEvery}){
-  const W=860, H=250, padL=46, padR=12, padT=14, padB=34;
+// ---------- Stats tab: combo + horizontal-bar charts, hand-rolled SVG ----------
+// One shared renderer so the charts read as one system. Bars are the period values, the
+// line is the comparison series; one y axis (same unit) — never a dual axis.
+// dec: tooltip/tick decimals (0 = integers, user request for counts); line.tag: a short
+// annotation pinned at the right end of the line (e.g. "5-yr avg").
+function comboChart({labels, series, line, unit, xEvery, dec}){
+  const W=860, H=250, padL=46, padT=14, padB=34;
+  const padR = line && line.tag? 74 : 12; // right gutter for the line's end annotation
   const plotW = W-padL-padR, plotH = H-padT-padB;
   const n = labels.length;
+  const fv = v => dec? (+v).toFixed(dec) : Math.round(+v).toLocaleString();
   const totals = labels.map((_,i)=> series.reduce((a,s)=>a+(s.values[i]||0),0));
   const yMax = Math.max(1, ...totals, ...(line? line.values.filter(v=>v!=null):[]))*1.08;
   const X = i => padL + (i+0.5)*(plotW/n);
@@ -2739,24 +2759,25 @@ function comboChart({labels, series, line, unit, xEvery}){
   for (let g=0; g<=3; g++){ // recessive grid + y ticks
     const v = yMax*g/3;
     out += `<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/>
-      <text x="${padL-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9.5" fill="var(--ink-muted)">${v>=10? Math.round(v): v.toFixed(1)}</text>`;
+      <text x="${padL-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9.5" fill="var(--ink-muted)">${fv(v)}</text>`;
   }
   labels.forEach((lab,i)=>{
     let y0 = Y(0);
     series.forEach(s=>{
       const v = s.values[i]||0; if (!v) return;
       const h = (v/yMax)*plotH;
-      out += `<rect x="${(X(i)-bw/2).toFixed(1)}" y="${(y0-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h-1,1).toFixed(1)}" rx="1.5" fill="${s.color}"><title>${lab} — ${s.name}: ${v>=10? Math.round(v): (+v).toFixed(1)} ${unit}</title></rect>`;
+      out += `<rect x="${(X(i)-bw/2).toFixed(1)}" y="${(y0-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h-1,1).toFixed(1)}" rx="1.5" fill="${s.color}"><title>${lab} — ${s.name}: ${fv(v)} ${unit}</title></rect>`;
       y0 -= h;
     });
     if (i % (xEvery||1) === 0) out += `<text x="${X(i).toFixed(1)}" y="${H-padB+13}" text-anchor="middle" font-size="9.5" fill="var(--ink-muted)">${lab}</text>`;
   });
   if (line){
     const pts = line.values.map((v,i)=> v==null? null : [X(i), Y(v)]);
-    let d="", pen=false;
-    pts.forEach(p=>{ if(!p){pen=false;return;} d += (pen?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1); pen=true; });
+    let d="", pen=false, lastP=null;
+    pts.forEach(p=>{ if(!p){pen=false;return;} d += (pen?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1); pen=true; lastP=p; });
     out += `<path d="${d}" fill="none" stroke="var(--ink-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`;
-    pts.forEach((p,i)=>{ if(p) out += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="var(--ink-1)" stroke="var(--surface-1)" stroke-width="1.2"><title>${labels[i]} — ${line.name}: ${(+line.values[i]).toFixed(1)} ${unit}</title></circle>`; });
+    pts.forEach((p,i)=>{ if(p) out += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="var(--ink-1)" stroke="var(--surface-1)" stroke-width="1.2"><title>${labels[i]} — ${line.name}: ${fv(line.values[i])} ${unit}</title></circle>`; });
+    if (line.tag && lastP) out += `<text x="${(lastP[0]+8).toFixed(1)}" y="${(lastP[1]+3.5).toFixed(1)}" font-size="10" font-weight="700" fill="var(--ink-1)">${line.tag}</text>`;
   }
   const legend = [...series.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px"><span style="width:10px;height:10px;border-radius:2px;background:${s.color}"></span>${s.name}</span>`),
     line? `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:0;border-top:2.5px solid var(--ink-1)"></span>${line.name}</span>` : ""].join("");
@@ -2765,34 +2786,83 @@ function comboChart({labels, series, line, unit, xEvery}){
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" role="img">${out}
       <line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--baseline)" stroke-width="1"/></svg>`;
 }
+// horizontal bars, biggest first — for area comparison (integers, direct value labels)
+function hbarChart({rows, unit, color}){
+  const W=860, rowH=24, padL=170, padR=64, padT=4;
+  const H = padT + rows.length*rowH + 6;
+  const vMax = Math.max(1, ...rows.map(r=>r.value));
+  let out = "";
+  rows.forEach((r,i)=>{
+    const y = padT + i*rowH;
+    const w = (r.value/vMax)*(W-padL-padR);
+    out += `<text x="${padL-8}" y="${y+rowH/2+3.5}" text-anchor="end" font-size="10.5" fill="var(--ink-1)">${r.label}</text>
+      <rect x="${padL}" y="${y+4}" width="${Math.max(w,1.5).toFixed(1)}" height="${rowH-8}" rx="2" fill="${r.color||color||"var(--seq-450)"}"><title>${r.label}: ${Math.round(r.value).toLocaleString()} ${unit}</title></rect>
+      <text x="${(padL+w+6).toFixed(1)}" y="${y+rowH/2+3.5}" font-size="10" font-weight="650" fill="var(--ink-2)">${Math.round(r.value).toLocaleString()}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" role="img">${out}</svg>`;
+}
 const MONTHS_S = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-let statLoaded = {precip:false, e311:false, epcor:false};
-function loadStats(){ loadStatPrecip(); loadStat311(); loadStatEpcor(); }
+let statLoaded = {precip:"", e311:false, cmp:false};
+function loadStats(){ loadStatPrecip(); loadStat311(); loadStatCmp(); loadStatEpcor(); }
 
-// Chart A — monthly precipitation: 5-yr average (2021–2025) line vs this year's bars
+// Chart A — monthly rainfall OR snowfall by tracking mode: this year's bars vs the
+// previous-5-full-years same-month average line.
+//   rain: ECCC Blatchford daily total_precipitation_mm (official; the separate rain/snow
+//         columns end Dec 2025 at every current station, so total precip is the series)
+//   snow: Open-Meteo ERA5 archive daily snowfall_sum (cm) — the only source with a
+//         continuous snowfall series into the current year
 async function loadStatPrecip(){
-  if (statLoaded.precip) return;
+  const mode = trackCfg().word; // "rain" | "snow"
+  if (statLoaded.precip === mode) return;
+  const el = document.getElementById("statPrecip");
+  el.textContent = "loading…";
+  const yr = new Date().getFullYear();
   try{
-    const rows = await fetch("https://data.edmonton.ca/resource/s4ws-tdws.json?$select=year,month,sum(total_precipitation_mm) as p" +
-      "&$where=" + encodeURIComponent("station_name='EDMONTON BLATCHFORD' AND date>='2021-01-01'") +
-      "&$group=year,month&$order=year,month&$limit=100").then(r=>r.json());
-    const yr = new Date().getFullYear();
     const avg = Array.from({length:12},()=>({s:0,n:0})), cur = Array(12).fill(null);
-    rows.forEach(r=>{
-      const y=+r.year, m=+r.month-1, p=+r.p||0;
-      if (y>=yr-5 && y<yr){ avg[m].s+=p; avg[m].n++; }
-      if (y===yr) cur[m]=p;
-    });
-    document.getElementById("statPrecip").innerHTML = comboChart({
-      labels: MONTHS_S, unit:"mm",
+    let unit, title, note;
+    if (mode === "snow"){
+      const d = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=53.55&longitude=-113.5&start_date=${yr-5}-01-01&end_date=${todayLocalDate()}&daily=snowfall_sum&timezone=America%2FEdmonton`)
+        .then(r=>r.json());
+      const yearSum = {};
+      d.daily.time.forEach((day,i)=>{
+        const y=+day.slice(0,4), m=+day.slice(5,7)-1, v=d.daily.snowfall_sum[i]||0;
+        (yearSum[y] = yearSum[y]||Array(12).fill(0))[m] += v;
+      });
+      for (let y=yr-5; y<yr; y++) if (yearSum[y]) yearSum[y].forEach((v,m)=>{ avg[m].s+=v; avg[m].n++; });
+      (yearSum[yr]||[]).forEach((v,m)=>{ cur[m]=v; });
+      unit="cm"; title=`Monthly snowfall — 5-year average vs this year (Open-Meteo ERA5, Edmonton)`;
+      note=`Bars = this year's monthly snowfall to date · line = same-month average of the previous
+        5 full years (${yr-5}–${yr-1}). Source: Open-Meteo ERA5 reanalysis for central Edmonton —
+        ECCC's snowfall column ended Dec 2025 at every current station, so reanalysis is the only
+        continuous snowfall series; treat values as estimates, not gauge measurements.`;
+    } else {
+      const rows = await fetch("https://data.edmonton.ca/resource/s4ws-tdws.json?$select=year,month,sum(total_precipitation_mm) as p" +
+        "&$where=" + encodeURIComponent(`station_name='EDMONTON BLATCHFORD' AND date>='${yr-5}-01-01'`) +
+        "&$group=year,month&$order=year,month&$limit=100").then(r=>r.json());
+      rows.forEach(r=>{
+        const y=+r.year, m=+r.month-1, v=+r.p||0;
+        if (y>=yr-5 && y<yr){ avg[m].s+=v; avg[m].n++; }
+        if (y===yr) cur[m]=v;
+      });
+      unit="mm"; title=`Monthly precipitation — 5-year average vs this year (ECCC Blatchford)`;
+      note=`Bars = this year's monthly total to date · line = same-month average of the previous
+        5 full years (${yr-5}–${yr-1}). Source: Environment Canada daily records, Blatchford
+        station (city centre), via Edmonton open data <code>s4ws-tdws</code>. ECCC's separate
+        rain/snow columns ended Dec 2025, so rain mode charts <b>total precipitation</b>
+        (rain + snow water equivalent) — the continuous official series.`;
+    }
+    document.getElementById("statPrecipTitle").textContent = title;
+    document.getElementById("statPrecipNote").innerHTML = note;
+    el.innerHTML = comboChart({
+      labels: MONTHS_S, unit, dec:1,
       series: [{name:`${yr} monthly total`, color:"var(--seq-450)", values: cur.map(v=>v??0)}],
-      line: {name:`${yr-5}–${yr-1} same-month average`, values: avg.map(a=>a.n? a.s/a.n : null)}
+      line: {name:`${yr-5}–${yr-1} same-month average`, tag:"5-yr avg", values: avg.map(a=>a.n? a.s/a.n : null)}
     });
-    statLoaded.precip = true;
-  }catch(e){ document.getElementById("statPrecip").textContent="climate data unavailable"; console.warn(e); }
+    statLoaded.precip = mode;
+  }catch(e){ el.textContent="climate data unavailable"; console.warn(e); }
 }
 
-// Chart B — 311 weather reports per month, open vs closed, area-convertible
+// Chart B — 311 weather reports per month, open vs closed, area- and date-filtered
 let statArea = {mode:"city", name:""};
 function statAreaClause(){
   if (statArea.mode==="district" && statArea.name){
@@ -2803,6 +2873,12 @@ function statAreaClause(){
     return ` AND neighbourhood='${statArea.name.replace(/'/g,"''")}'`;
   return "";
 }
+function stat311Range(){ // From/To date inputs (defaults = full source range)
+  const f = document.getElementById("stat311From"), t = document.getElementById("stat311To");
+  if (!f.value) f.value = "2023-01-01";
+  if (!t.value) t.value = todayLocalDate();
+  return ` AND date_created>='${f.value}' AND date_created<'${t.value}T23:59:59'`;
+}
 async function loadStat311(force){
   if (statLoaded.e311 && !force) return;
   const el = document.getElementById("stat311");
@@ -2811,7 +2887,7 @@ async function loadStat311(force){
     // WEATHER311_CATS (not _WHERE): this chart stacks open vs closed, so the map's
     // open-only status clause must NOT apply here
     const rows = await fetch("https://data.edmonton.ca/resource/q7ua-agfg.json?$select=date_trunc_ym(date_created) as mo,request_status,count(*) as n" +
-      "&$where=" + encodeURIComponent(WEATHER311_CATS + statAreaClause()) +
+      "&$where=" + encodeURIComponent(WEATHER311_CATS + statAreaClause() + stat311Range()) +
       "&$group=mo,request_status&$order=mo&$limit=400").then(r=>r.json());
     const byMo = {};
     rows.forEach(r=>{
@@ -2819,17 +2895,17 @@ async function loadStat311(force){
       (byMo[k] = byMo[k]||{open:0,closed:0})[r.request_status==="Open"? "open":"closed"] += +r.n||0;
     });
     const keys = Object.keys(byMo).sort();
-    if (!keys.length){ el.textContent = "no weather-related 311 reports for this area"; statLoaded.e311=true; return; }
+    if (!keys.length){ el.textContent = "no weather-related 311 reports for this area / range"; statLoaded.e311=true; return; }
     const labels = keys.map(k=>MONTHS_S[+k.slice(5)-1]+" "+k.slice(2,4));
     const open = keys.map(k=>byMo[k].open), closed = keys.map(k=>byMo[k].closed);
-    // line: that calendar month's average across all years on record (2023→)
+    // line: that calendar month's average across the selected range's years
     const calAvg = Array.from({length:12},()=>({s:0,n:0}));
     keys.forEach(k=>{ const m=+k.slice(5)-1; calAvg[m].s += byMo[k].open+byMo[k].closed; calAvg[m].n++; });
     const lineVals = keys.map(k=>{ const a=calAvg[+k.slice(5)-1]; return a.n? a.s/a.n : null; });
-    el.innerHTML = comboChart({labels, unit:"reports", xEvery: Math.ceil(keys.length/14),
+    el.innerHTML = comboChart({labels, unit:"reports", dec:0, xEvery: Math.ceil(keys.length/14),
       series: [{name:"closed", color:"var(--seq-450)", values: closed},
                {name:"still open", color:"var(--band-3)", values: open}],
-      line: {name:"same-month average, all years", values: lineVals}});
+      line: {name:"same-month average, years in range", tag:"avg", values: lineVals}});
     statLoaded.e311 = true;
   }catch(e){ el.textContent="311 stats unavailable"; console.warn(e); }
 }
@@ -2850,6 +2926,44 @@ document.querySelectorAll("#statAreaBtns .segbtn").forEach(b=>b.addEventListener
   loadNeighbourhoods(()=>{ syncStatAreaSel(); loadStat311(true); }); // nei polygons carry the district roll-up
 }));
 document.getElementById("statAreaSel").addEventListener("change", e=>{ statArea.name = e.target.value; loadStat311(true); });
+["stat311From","stat311To"].forEach(id=>document.getElementById(id).addEventListener("change", ()=>{
+  const f=document.getElementById("stat311From"), t=document.getElementById("stat311To");
+  if (f.value && t.value && f.value > t.value) (id==="stat311From"? t : f).value = document.getElementById(id).value;
+  loadStat311(true); loadStatCmp(true); // the comparison chart shares this range
+}));
+
+// Chart B2 — horizontal comparison: weather 311 totals by district or top-20 neighbourhoods,
+// over the SAME date range as the monthly chart above
+let statCmpMode = "district";
+async function loadStatCmp(force){
+  if (statLoaded.cmp && !force) return;
+  const el = document.getElementById("statCmp");
+  el.textContent = "loading…";
+  loadNeighbourhoods(async ()=>{
+    try{
+      const rows = await fetch("https://data.edmonton.ca/resource/q7ua-agfg.json?$select=neighbourhood,count(*) as n" +
+        "&$where=" + encodeURIComponent(WEATHER311_CATS + " AND neighbourhood IS NOT NULL" + stat311Range()) +
+        "&$group=neighbourhood&$order=n DESC&$limit=1000").then(r=>r.json());
+      let out;
+      if (statCmpMode === "district"){
+        const d2 = {}; // nei -> district via the boundary layer's own roll-up field
+        neiFeats.forEach(f=>{ d2[f.properties.name] = f.properties.district; });
+        const byD = {};
+        rows.forEach(r=>{ const d = d2[r.neighbourhood]; if (d) byD[d] = (byD[d]||0) + (+r.n||0); });
+        out = Object.entries(byD).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label, value}));
+      } else {
+        out = rows.slice(0,20).map(r=>({label: titleCaseNei(r.neighbourhood), value:+r.n||0}));
+      }
+      el.innerHTML = out.length? hbarChart({rows: out, unit:"reports"}) : "no reports in this range";
+      statLoaded.cmp = true;
+    }catch(e){ el.textContent="comparison unavailable"; console.warn(e); }
+  });
+}
+document.querySelectorAll("#statCmpBtns .segbtn").forEach(b=>b.addEventListener("click", ()=>{
+  statCmpMode = b.dataset.v;
+  document.querySelectorAll("#statCmpBtns .segbtn").forEach(x=>x.classList.toggle("active", x===b));
+  loadStatCmp(true);
+}));
 
 // Chart C — EPCOR incidents by district: stacked by simplified category + total line.
 // The feed is a LIVE SNAPSHOT (no public history), so this is "right now".
@@ -2863,11 +2977,11 @@ function loadStatEpcor(){
     (byD[d] = byD[d]||{act:0,res:0,pln:0})[p.kind] = (byD[d][p.kind]||0)+1;
   });
   const keys = Object.keys(byD).sort((a,b)=>{ const t=x=>byD[x].act+byD[x].res+byD[x].pln; return t(b)-t(a); });
-  el.innerHTML = comboChart({labels: keys.map(k=>k.length>14? k.slice(0,13)+"…":k), unit:"incidents",
+  el.innerHTML = comboChart({labels: keys.map(k=>k.length>14? k.slice(0,13)+"…":k), unit:"incidents", dec:0,
     series: [{name:"active outage", color:"#d03b3b", values: keys.map(k=>byD[k].act)},
              {name:"restoring", color:"#2f9e44", values: keys.map(k=>byD[k].res)},
              {name:"planned work", color:"#e07b00", values: keys.map(k=>byD[k].pln)}],
-    line: {name:"district total", values: keys.map(k=>byD[k].act+byD[k].res+byD[k].pln)}});
+    line: {name:"district total", tag:"total", values: keys.map(k=>byD[k].act+byD[k].res+byD[k].pln)}});
 }
 
 initMap();
