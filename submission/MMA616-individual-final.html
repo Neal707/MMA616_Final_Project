@@ -43,8 +43,8 @@ building-vs-easing trend that the raw feed cannot show.
 <h2>1 · The workspace</h2>
 <p>The workspace is a Claude Code project organized around a <code>CLAUDE.md</code>, connected to the
 City of Edmonton open-data feed <b>24 Hour Rainfall Totals and Storm Severity Ratings</b>
-(<code>x4rm-mppc</code>) as a live SODA API source, with three project skills, one subagent, and a
-single-file live HTML dashboard as the demonstration interface.</p>
+(<code>x4rm-mppc</code>) as a live SODA API source, with three project skills, one critic subagent, and a
+single-file live HTML dashboard (a four-tab workspace) as the demonstration interface.</p>
 
 <h3>The living spec — CLAUDE.md</h3>
 <ul>
@@ -71,12 +71,17 @@ single-file live HTML dashboard as the demonstration interface.</p>
     with its type quirks, the rating scale, and the data cautions.</li>
   <li><code>knowledge/research/edmonton-domain-context.md</code> — why the decision matters
     (finite crews, underpass flooding as a life-safety risk, the 2004 design storm).</li>
-  <li>Companion live sources merged as context: planning districts (<code>avbh-ga6n</code>),
-    storm/combined pump stations (<code>yhez-gf32</code>), live traffic disruptions
-    (<code>k4tx-5k8p</code>), Alberta 511 highway cameras, ECCC GeoMet radar/alerts/lightning WMS,
-    Environment Canada forecast, Open-Meteo hourly model. Two candidate datasets were evaluated and
-    <i>rejected</i> (hourly ECCC weather: no precip field + corrupt dates; river water levels:
-    stale/upstream) — recorded so the agent doesn't re-propose them.</li>
+  <li>Companion live sources merged as context: planning districts (<code>avbh-ga6n</code>) and
+    neighbourhoods (<code>65fr-66s6</code>), storm/combined pump stations (<code>yhez-gf32</code>),
+    storm-water management ponds (<code>72ee-mmkx</code>), live road closures (<code>k4tx-5k8p</code>),
+    311 service requests (<code>q7ua-agfg</code>), EPCOR's live water-outage feature services (ArcGIS —
+    discovered from the public app config, drawn as a native map layer), City of Edmonton traffic
+    cameras, Environment Canada citypage forecast, Open-Meteo (hourly model + ERA5 archive), and ECCC
+    Blatchford historical precipitation (<code>s4ws-tdws</code>) for the Stats charts; the Windy.com
+    embed provides the regional radar/forecast animation (it replaced an earlier in-app ECCC GeoMet WMS
+    map). Candidate datasets were evaluated and <i>rejected</i> (hourly ECCC weather: no precip field +
+    corrupt dates; river water levels: stale/upstream; EPCOR pond/sewer telemetry: internal SCADA, not
+    public) — recorded so the agent doesn't re-propose them.</li>
 </ul>
 
 <h3>Skills, subagents, workflows</h3>
@@ -84,7 +89,7 @@ single-file live HTML dashboard as the demonstration interface.</p>
 <tr><th>Component</th><th>Kind</th><th>What it does</th></tr>
 <tr><td><code>edmonton-rainfall-metadata</code></td><td>Skill</td><td>Metadata library consulted <i>before</i> any query or metric — the endpoint, field traps (string numerics, the <code>$select</code> HTTP-400, the midnight-reset timestamp), and the "no history API exists — don't search for one" rule.</td></tr>
 <tr><td><code>storm-assessment</code></td><td>Skill</td><td>Produces the duty-supervisor briefing on demand: fetches live, computes the seven metrics, answers in a fixed briefing shape that leads with the data-as-of stamp and flags blind spots.</td></tr>
-<tr><td><code>dashboard-verify</code></td><td>Skill</td><td>The evaluation harness: serves the dashboard, cross-checks every KPI against independent SoQL queries, exercises the trend-buffer, failure, filter, camera, and radar paths — 10 checks, all must pass after any edit.</td></tr>
+<tr><td><code>dashboard-verify</code></td><td>Skill</td><td>The evaluation harness: serves the dashboard, cross-checks every KPI against independent SoQL queries, exercises the trend-buffer, failure, filter, camera, EPCOR and stats-chart paths — a growing end-to-end suite (now ~17 sections), all must pass after any edit.</td></tr>
 <tr><td><code>dashboard-critic</code></td><td>Subagent</td><td>Skeptical reviewer that judges the dashboard strictly from the supervisor's chair (wrong-decision risk → decision latency → data honesty → encoding correctness → robustness) and recomputes any number it critiques against the live feed.</td></tr>
 </table>
 
@@ -113,6 +118,9 @@ July 11–12 storm. Selected log:</p>
 <tr><td>Live storm, Jul 11</td><td>storm-assessment during a real event</td><td>Stations ranged rating 0→6 simultaneously (68.8&nbsp;mm at RG17 vs &lt;5&nbsp;mm elsewhere) — the "localized cell" case the storm-shape metric was built for, observed live.</td></tr>
 <tr><td>Live storm, Jul 12</td><td>Dashboard on shift through the evening</td><td>Citywide BARRICADE at 18:50 (RG38 52.0&nbsp;mm, rating 5 at 3 stations, 11 ≥ Monitor); by 19:19 the rolling window eased to DISPATCH (RG40, 26.0&nbsp;mm). The priorities queue re-ordered itself correctly through the transition.</td></tr>
 <tr><td>Camera audit, Jul 12</td><td>curl sweep of all 51 camera image endpoints</td><td>All return HTTP&nbsp;200 — but 10 endpoints (3 sites) serve a <span class="bad">byte-identical placeholder PNG</span> (same MD5). "200 OK" is not "working camera". The 3 dead sites were removed; 14 live sites remain.</td></tr>
+<tr><td>EPCOR integration, Jul 16</td><td>Broke open EPCOR's outage data</td><td>The public ArcGIS app config exposes EPCOR's production feature services (CORS-open) — merged live water incidents as a <b>native map layer</b> and a KPI tile, replacing an embedded iframe, and simplified 6 EPCOR symbol types to 3. Confirmed pipe-flow / pond levels are internal SCADA (published nowhere) — recorded so it is not re-proposed.</td></tr>
+<tr><td>Tabbed workspace + Stats, Jul 17–18</td><td>Restructure + historical charts</td><td>Split the single page into four tabs (Station data / Maps / Weather forecast / Stats). Built a Stats tab of hand-rolled SVG combo charts — multi-year precipitation (ECCC Blatchford + ERA5), 311 open-vs-closed, %-composition by area, EPCOR by district — each cross-checked against an independent SoQL query (e.g. Downtown Nov-2025 open weather 311 = 7 both ways).</td></tr>
+<tr><td>Open-only 311 + heatmap, Jul 17</td><td>Actionability pass</td><td>Added a per-month 311 heatmap and switched every 311 surface to <b>open reports only</b> — closed tickets are resolved, not crew-actionable. Verified the change thins old heatmap months (as expected) and the count drops from all-status to open (940k→425k over a year), matching an independent count.</td></tr>
 </table>
 
 <h2>3 · Screenshots of the dashboard</h2>
@@ -206,9 +214,7 @@ library exists because the dataset is full of traps that produce <i>silently wro
 freshness stamp). The repeatable work is packaged as skills: a briefing generator for the
 supervisor's question, a metadata library for the agent's queries, and a verification harness that
 must pass after every edit; a critic subagent reviews from the supervisor's chair before anything
-ships. The dashboard demonstrates the workspace live: alert posture, an ordered priorities queue,
-duty tiles, an Environment Canada embed, a district choropleth with pump/closure/camera/radar
-layers, regional radar, and a district-filterable ranked table.</p>
+ships. The dashboard demonstrates the workspace live as a four-tab interface: <b>Station data</b> (alert posture, an ordered priorities queue, duty tiles, a historical 311 heatmap, and the severity-ranked station table with a per-gauge ±12&nbsp;h forecast column), <b>Maps</b> (a district choropleth with tick-to-show gauge / 311 / EPCOR-incident / pond / pump / closure / camera layers and a multi-select filter panel), <b>Weather forecast</b> (Environment Canada's 7-day forecast + the Windy.com regional animation), and <b>Stats</b> (multi-year precipitation, 311 open-vs-closed, category-composition, and EPCOR combo charts under one shared filter).</p>
 <p><b>What the evaluation showed.</b> Testing output rather than code found five real defects, and
 each had the same signature: the system looked right while being wrong (a plausible-looking string
 sort, a plausible-looking midnight timestamp, cameras returning HTTP 200 placeholders). The fix in
