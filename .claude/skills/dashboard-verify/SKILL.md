@@ -95,13 +95,25 @@ against the source independently.
    same payload's `warnings` drives the "Weather alerts — Edmonton" KPI tile ("None" when
    clear; red count + event names when active). On API failure both degrade to explicit
    "unavailable" text; nothing blocks the rest of the dashboard.
-8. **Filters** — the filter bar lives in its OWN slim panel at the top of the Operations tab,
-   above both the maps column and the table. District / Station / Rating / Feed-says selects
-   filter the table rows AND gauge dots; the District filter ALSO hides every context-layer
-   marker outside the district (pumps, closures, 311 flood reports, cameras — via
-   `applyContextFilter()`: point-in-polygon district cached on each marker, hidden by CSS
-   display, re-applied on overlayadd/loader completion). Ward fills and citywide KPIs must
-   NOT change; Clear restores everything; selections survive an auto-refresh.
+8. **Filters = MULTI-SELECT checklists in map 1's left side panel (redesigned 2026-07-17;
+   the old top dropdown bar is GONE — no `#fDistrict`/`fStation`/`fRating`/`fSays` selects,
+   don't reintroduce them).** A combined `.mapside` column sits to the LEFT of map 1:
+   `#filterPanel` (filter checklists + "Clear all filters") stacked over the existing
+   `#layerPanel` (layer legend). State lives in ONE object `filterSel = {district, station,
+   rating, says}` of Sets (empty set = no constraint from that category); District values are
+   stored STRIPPED of "near ". `syncFilterOptions()` builds the checkbox groups (rebuild
+   guarded by an option-signature so a tick never resets scroll) and each checkbox change
+   calls `onFilterChange()` (→ rerender + renderHeatmap + neighbourhood restyle; render()
+   already does restyleWards + applyContextFilter). `passes(s)` is now set-membership per
+   category. District selection can be MANY districts at once: the map highlights ALL selected
+   polygons (blue border, rest muted via `withSelection`/`anyDistrictSel`/`isDistrictSel`),
+   `applyContextFilter` shows context markers whose `_district` is in the set, and the heatmap
+   zooms to the union. Map-polygon clicks and heatmap row-label clicks go through
+   `toggleDistrictSelection` which toggles the Set AND ticks the matching checkbox
+   (`syncFilterChecks`) — two-way sync. Basemap click and "Clear all filters" empty the Sets.
+   Ward fills and citywide KPIs still must NOT change. Verified live: ticking Central+Ellerslie
+   → 2 blue polygons, table 3 rows, heatmap 2 rows, count chip "(2)"; heatmap row click ticks
+   its checkbox; Clear restores 23 rows / 0 highlight.
 7e. **Crew work window** — `#fcCrew` under the forecast headline: next-6h rain phrase
    (dry / easing ≈ HH / rain returns ≈ HH), gusts (high-wind caution at ≥60 km/h), temp range,
    daylight-remaining from Open-Meteo `daily=sunrise,sunset`; empty on forecast failure.
@@ -144,12 +156,14 @@ against the source independently.
    not reintroduce them. The "Regional weather map — forecast animation (Windy.com)" panel
    sits under the drainage map (left column) with `#wxWindyBlock` ALWAYS visible and the
    `#windyFrame` iframe `src` set directly in the HTML (no lazy `data-src`), default
-   `overlay=thunder` so the embed's own timeline plays the multi-day FORECAST animation
-   out of the box. `#windyBtns` order puts forecast-animating overlays first (Rain &
-   thunder default-active, then Wind / Rain accum. / Temperature / Clouds / Satellite),
-   with "Radar (live only)" last — Windy's radar overlay is short-range observed history
-   (~1 h platform limit), which is why it is not the default; don't let a future edit
-   collapse that distinction. Forecast playback is VERIFIED working: pressing the embed's own
+   `overlay=radar` (user request 2026-07-17 — the observed-radar view is the default;
+   this superseded the earlier thunder default). `#windyBtns` order: Radar first
+   (default-active), then the forecast-animating overlays (Rain & thunder / Snow accum. /
+   Wind / Rain accum. / Temperature / Clouds / Satellite). Windy's radar overlay is
+   short-range observed history (~1 h platform limit); the forecast overlays run the
+   multi-day timeline — don't let a future edit collapse that distinction. In snow
+   tracking mode `setTrackMode` still switches the overlay to Snow accum.
+   (rain mode's `windyOverlay` is now "radar"). Forecast playback is VERIFIED working: pressing the embed's own
    play button on the thunder overlay advanced the timeline ~3 days (Wed 10 PM → Sat 8 AM) in
    one loop. The embed has NO autoplay — `play=1`/`autoplay=1` URL params were tested live and
    ignored, and the iframe is cross-origin so its play button cannot be clicked from the page;
@@ -167,20 +181,23 @@ against the source independently.
    boundary polygons; there are no `#mapMetricSel`/`#densityBoundarySel` selects anymore.
    The Tracking (rain/snow) header select remains a dropdown and must still swap the 311
    layer label without errors (the ECCC radar-product swap inside `setTrackMode` is gone).
-8c. **±12h precipitation column + PRE-INSPECT (2026-07-14; ±12h line chart 2026-07-16)** —
-   the table's 5th column ("Rain ±12 h (model, mm/h)", `stationFcCell`) is a mini SVG line
-   chart spanning PAST 12 h → now → NEXT 12 h per gauge (Open-Meteo
-   `past_hours=12&forecast_hours=12`, exactly 24 hourly points), with a labelled time AXIS
-   ("-12h · now · +12h") and a dashed vertical "now" divider. Past half = gray polyline
-   (model estimate, NOT gauge history — the gauge ground truth stays in the 24h rain
-   column); future half = amber; the coming (future-side) peak gets a red dot +
-   "2.3@1a.m." label whose text-anchor flips near the edges. NO mm total anywhere (removed
-   from the cell AND the hover title at user request — title carries only the color coding
-   + coming peak). Dry rows (< .05 max) render a flat baseline "dry ±12 h" but keep the
-   axis. All rows share one y-scale (`stationFcHMax`); sorting via `data-k="fc"` uses the
-   NEXT-12H sum. Fed by ONE batched multi-point call (`loadStationFc`, 30-min cache,
-   stores `stationFcH = {t, p, nowIdx}`). The session sparkline stays gone from the table
-   (still in each gauge's dot popup).
+8c. **±12h precipitation column + PRE-INSPECT (±12h chart 2026-07-16; exact-time axis +
+   snow-aware 2026-07-17)** — the table's 5th column (`#thFc`, `stationFcCell`) is a mini SVG
+   line chart spanning PAST 12 h → now → NEXT 12 h per gauge (Open-Meteo
+   `past_hours=12&forecast_hours=12`). The x-axis shows the ACTUAL clock times (via `fcClock`,
+   e.g. "6a … now … 5a") at the ends, not "-12h/+12h" (user request), with a dashed "now"
+   divider. Past half = gray polyline (model estimate, NOT gauge history); future half = amber;
+   coming peak gets a red dot + "2.3@1a.m." label. NO mm total shown. Dry rows render "dry
+   ±12 h" but keep the axis. Sorting via `data-k="fc"` on the next-12h sum.
+   **Snow-aware**: `loadStationFc` fetches `trackCfg().pField` (precipitation in rain mode,
+   `snowfall` in snow) — tracked by `stationFcField`, and `setTrackMode` resets `stationFcAt=0`
+   to force a re-fetch; the header (`#thFc`, via `applyTrackLabels`) reads "Rain ±12 h (model,
+   mm/h)" / "Snow ±12 h (model, cm/h)". The adjacent GAUGE column header (`#th24h`) also
+   relabels to "24h rain gauge (mm, rain only)" in snow mode — the x4rm-mppc gauge network
+   measures RAIN only (inactive off-season), so we relabel honestly rather than fabricate a
+   snow reading; only the model forecast column actually switches to snowfall (verified live
+   both directions: stationFcField flips precipitation⇄snowfall). Fed by ONE batched
+   multi-point call (30-min cache, stores `stationFcH = {t, p, nowIdx}`).
 8e. **Modal = metrics → mini map → 4 cams (2026-07-16; reordered 2026-07-17)** — clicking a
    STATION code or a DISTRICT name in the table opens `#camModal` in this exact order (user
    request): (1) `#miniMetrics`, area-scoped "metrics at a glance" — `.mm-cell` mini-KPIs
@@ -194,10 +211,12 @@ against the source independently.
    basemap, district severity fill via the same `rampColor`/`muted` helpers, dark gauge
    dots — with the designated district vivid + blue border and the rest faded; station
    clicks also draw a blue ring around that gauge and district clicks `fitBounds` to the
-   district polygon. `renderMiniMap` must run AFTER the modal is displayed +
-   `invalidateSize` (it inits against a hidden container). This replaced the brief
-   "district → maps pane" behavior; the side tabs (§8d) remain but district links now open
-   this modal again.
+   district polygon. **`miniMap` MUST be created WITH an initial `.setView([53.54,-113.49],10)`
+   (fixed 2026-07-17)** — without a view Leaflet can't project the vector layers added right
+   after, so the modal showed only a bare basemap (0 rendered paths — the exact bug the user
+   reported); with the initial view it draws all 38 paths (15 districts + 23 gauges) and the
+   1 blue-highlighted district. `renderMiniMap` also `invalidateSize`es in a timeout (hidden
+   container at init).
 9c. **EPCOR water incidents = NATIVE layer on map 1 (2026-07-16; the earlier iframe panel
    is REMOVED — no `#epcorFrame`, no `#epcorViewBtns`, don't reintroduce them)**. The
    Experience app's item config turned out to be PUBLIC
@@ -206,37 +225,60 @@ against the source independently.
    services on `services6.arcgis.com/Ji2rusuWXDFSqNsP/arcgis/rest/services/…/FeatureServer/0`,
    all CORS `*` and `f=geojson` (WGS84):
    `EPCor_Water_Outages_Prod` (Status regex → color: /may be out of water/i RED,
-   /repaired/i GREEN, else YELLOW), `Water_InfrastructureProjects_Prod` (orange triangle),
-   `UDF_Events_Prod` (purple hexagon = main flushing), `GenericWaterEvents_Prod` (⚠).
+   /repaired/i), `Water_InfrastructureProjects_Prod`, `UDF_Events_Prod`,
+   `GenericWaterEvents_Prod`.
+   **Categories SIMPLIFIED to 3 (2026-07-17, user request — 6 symbols were too many):**
+   `act` = active outage (EPCOR red + yellow merged; red circle marker; `noWater:true` flag
+   kept per feature for the /may be out of water/ subset), `res` = repaired/restoring (green
+   circle), `pln` = planned work (construction + flushing + other; orange diamond). The
+   fine-grained EPCOR status text lives in the popup (incl. a bold no-water warning) — do
+   not resurrect the 6-symbol legend.
    `loadEpcor()` fetches all four in parallel (individual failures tolerated; full failure →
    tile "feed unreachable"), throttled ~5 min, re-invoked each `load()` cycle; markers are
    divIcons matching the `#epcorLegend` chips exactly; `epcorList` feeds the district filter
-   (`applyContextFilter`) and `crewContext` ("N EPCOR incident(s) (n no-water)").
-   - **`#epcorLegend`** now lives under map 1's layer panel, shown ONLY while `epcorLayer`
-     is on (overlayadd/remove hooks, like the old lightning note). Chip wordings are EPCOR's
-     official legend (full sentence in hover titles) — do NOT invent new wordings.
-   - **KPI tile** ("EPCOR water incidents", `#kpiEpcor`): value = active outage count (red
-     when any no-water), `.n` = e.g. "2 no water · 3 responding · 10 restoring · 10
-     construction · 20 flushing · 2 other" (zero categories omitted; "none reported" empty
-     state). Every count is derived from `epcorList` — the GEOCODED features actually drawn —
-     so the tile and the map markers are always equal (verify: tile category sum == marker
-     count, e.g. 2+3+10+10+20+2 = 47). Cross-check against source: each service's
-     `query?where=1=1&returnCountOnly=true&f=json` is the RAW feed count (15/10/21/3) and can
-     be ≥ the tile/markers, because rows with null geometry are correctly skipped from both
-     (e.g. flushing 21 raw → 20 on the map; generic 3 raw → 2). Outage split by Status regex:
-     /may be out of water/→red, /repaired/→green, else yellow.
+   (`applyContextFilter`), `crewContext`, and the Stats tab's EPCOR chart.
+   - **`#epcorLegend`**: 3 chips (active / restoring / planned work), shown ONLY while
+     `epcorLayer` is on; hover titles stay descriptive full sentences.
+   - **KPI tile** ("EPCOR water incidents", `#kpiEpcor`): value = act+res (red when any
+     no-water), `.n` = e.g. "4 active (1 no-water) · 11 restoring · 32 planned work"
+     ("none reported" empty state). Every count derives from `epcorList` (geocoded features
+     actually drawn) so tile == markers. Raw `returnCountOnly` per service (15/10/21/3) can
+     be ≥ that — null-geometry rows are skipped from both.
    - The map helpnote keeps the operational read (red circles = the storm signal;
      triangles/hexagons = planned work that can mask or mimic storm impact) and the
      SCADA-gap sentence + SIRP/outage-page links — pipe-level flow and pond levels are
      EPCOR-internal SCADA, published nowhere; these invariants moved here from the deleted
      panel and must stay.
-8d. **Side tabs: table primary, maps behind a vertical tab (2026-07-16)** — the old
-   maps-beside-table flex row is gone. `.sidewrap` = a vertical tab strip (`.sidetabs`,
-   writing-mode buttons "📋 Station table" / "🗺 Maps") + `.sidecontent` holding two panes:
-   `#sideTable` (ACTIVE by default — the station table is the primary view, full width) and
-   `#sideMaps` (drainage map panel + Windy panel stacked). `showSidePane("maps")` must call
-   `map.invalidateSize()` after reveal — Leaflet inits against the hidden 0-size container
-   (verified: 984×520 after reveal). Clicking a DISTRICT name in the table now switches to
+8d. **Side tabs: table primary, maps + weather + stats behind vertical tabs (2026-07-16;
+   3rd tab 2026-07-17; 4th tab "📊 Stats" same day)** — `.sidewrap` = a vertical tab strip
+   (`.sidetabs`) + `.sidecontent` holding FOUR panes:
+   `#sideTable` (ACTIVE default — the station table), `#sideMaps` (drainage map panel only now),
+   `#sideForecast` (the 7-day ECCC forecast panel + the Windy animation panel, both MOVED
+   here 2026-07-17 — the 7-day panel used to sit above the tabs, Windy used to be in #sideMaps;
+   there must be exactly ONE `#windyFrame`/`#ecccTable`/`#fcHead`, no duplicates), and
+   `#sideStats` (see 8e). `showSidePane` iterates ["Table","Maps","Forecast","Stats"].
+8e. **Stats tab (2026-07-17)** — three combo charts (stacked bars + comparison line), all
+   rendered by the shared `comboChart()` SVG helper (ONE y axis per chart — never dual-axis),
+   lazily fetched on first open (`loadStats()`; `statLoaded` flags):
+   - **Monthly precipitation** (`#statPrecip`): bars = this year's monthly totals, line =
+     previous-5-full-years same-month average. Source: ECCC daily records, EDMONTON
+     BLATCHFORD, via SoQL sum on `s4ws-tdws`. Uses `total_precipitation_mm` for BOTH track
+     modes — the separate rain/snow columns end Dec 2025 at every current station (verified),
+     so total precipitation is the only continuous official series; the caption says so.
+   - **311 weather reports by month** (`#stat311`): stacked open (amber) / closed (blue) by
+     month opened, line = same-calendar-month average across all years on record. MUST query
+     with `WEATHER311_CATS` (categories only), NOT `WEATHER311_WHERE` — the map constant has
+     an `AND request_status='OPEN'` tail, which silently zeroed every closed bar when first
+     built (verified fix: Jan 23 shows ~10.9k closed). Source starts Jan 2023 → a true
+     5-year average doesn't exist; caption labels the line "all years on record". Area
+     convertible via `#statAreaBtns` (Whole city / District / Neighbourhood) + `#statAreaSel`
+     (district mode rolls up that district's neighbourhoods via `neiFeats`).
+   - **EPCOR incidents by district** (`#statEpcor`): stacked act/res/pln per district + total
+     line, from `epcorList` (the live snapshot; refreshed by `loadEpcor`). EPCOR publishes NO
+     public history — the caption must keep saying this is "right now", and no fake time
+     series may be invented for it.
+   `showSidePane("maps")` must call `map.invalidateSize()` after reveal — Leaflet inits against
+   the hidden 0-size container (verified: 984×520 after reveal). Clicking a DISTRICT name in the table now switches to
    the Maps pane, selects/highlights that district (same `toggleDistrictSelection` path:
    vivid + blue border, rest muted, table/heatmap filter follows) and scrolls the map into
    view — it no longer opens the live-cam modal (user request; cams remain via station-code
@@ -460,6 +502,35 @@ against the source independently.
      AND <WEATHER311_WHERE>` — must equal the cell tooltip exactly (verified live with the
      weather filter: DOWNTOWN Nov 2025 = 7 both ways; omitting the filter gives all-category
      counts, ~10x larger, and is the wrong comparison).
+
+14. **Three fully-independent side tabs + heatmap relocation (2026-07-17).** The tabs share NO
+   filter state (user: "completely separate"). Content:
+   - **Station table (default)**: the historical 311 heatmap NOW LIVES HERE (moved out of
+     above-the-tabs), above the station table, with its OWN controls — day range
+     (`#hmPresetSel` + `#hmFrom`/`#hmTo`, state `hmFrom/hmTo`, helpers `hmCutoff/hmUntil/
+     hmMonths/hmApplyPreset/initHmRange`), boundary (`#hmBoundaryBtns`, `hmBoundary`), and a
+     text search `#stnSearch` (`stnQuery`) SHARED with the table. These are fully separate from
+     the Maps-tab density controls (`densityFrom/To/Boundary`) — changing one does not touch the
+     other (verified: hm range "past month" while map density stayed "past year").
+   - **`stnQuery` shared filter**: `passesTable(s)` = station code OR district contains the
+     query; the heatmap filters rows whose name contains it; clicking a heatmap row label sets
+     `#stnSearch`. The gauge MAP markers use a separate `passesMap` (the Maps-tab `filterSel`
+     multi-select). So ticking a district in the Maps filter panel highlights the map but does
+     NOT change the table (verified: table stayed 23 rows) — that independence is the point,
+     don't re-couple them.
+   - **Maps**: map 1 + its left filter/legend panel + area search + density controls (map-only).
+   - **Weather forecast**: 7-day ECCC panel + Windy panel.
+15. **311 = OPEN reports only, everywhere (2026-07-17, user request).** `WEATHER311_WHERE` has
+   `AND upper(request_status)='OPEN'` baked in (density map, historical heatmap, popup stats),
+   and `loadFlood311` adds the same to its 14-day query (KPI tile + markers). Consequence the
+   user accepted: heatmap months older than a few weeks read light (old reports are closed) —
+   the panel note says so; do NOT treat the near-empty old columns as a bug. The flood KPI
+   sub-count changed from "N open" to "open only" since all are now open.
+16. **Modal mini-map tick-to-show layers (2026-07-17).** `#miniMapLayers` checkboxes
+   (Gauges/311/EPCOR default on; Pumps/Closures/Cameras off) drive `miniLayerOn` →
+   `drawMiniMarkers()` redraws just the marker groups (`miniCtxLayers`) without resetting the
+   polygons or view; the station-click ring (`miniRingPt`) redraws on top. Verified: default
+   82 markers → +58 with cameras → −23 with gauges off.
 
 ## Invariants to respect when editing the dashboard
 

@@ -94,7 +94,9 @@
     border:1px solid var(--ring);border-radius:6px;background:var(--surface-1);color:var(--ink-1)}
   /* always visible: the date range + boundary drive BOTH the density fill and the
      historical heatmap, and the heatmap is available in either map mode */
-  #densityControls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  /* hidden by default: the map opens in district-severity mode; the density range/boundary/
+     legend controls appear only when the user switches to "Weather 311 density" */
+  #densityControls{display:none;flex-wrap:wrap;gap:10px;align-items:center}
   .hmwrap{overflow-x:auto;padding:4px 14px 12px}
   .hmgrid{display:grid;gap:2px;font-size:10.5px;color:var(--ink-2);min-width:420px}
   .hm-lab{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;
@@ -189,6 +191,20 @@
     color:var(--ink-1);line-height:1.3}
   .layerpanel input{margin:2px 0 0;accent-color:var(--seq-450)}
   @media(max-width:700px){.layerpanel{flex:1 1 100%;border-left:0;border-top:1px solid var(--grid)}}
+  /* combined LEFT side panel: filters (markable checklists) stacked over the layer legend */
+  .mapside{flex:0 0 210px;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--grid)}
+  .mapside .layerpanel{flex:0 0 auto;border-left:0}
+  .mapside #layerPanel{border-top:1px solid var(--grid)}
+  @media(max-width:700px){.mapside{flex:1 1 100%;border-right:0}}
+  .fg{margin:0 0 4px}
+  .fg > summary{cursor:pointer;font-size:11.5px;font-weight:650;color:var(--ink-1);
+    padding:4px 0;list-style-position:inside}
+  .fg > summary .cnt{color:var(--seq-450);font-weight:700;margin-left:4px}
+  .fg-items{max-height:150px;overflow-y:auto;padding:2px 0 4px 2px}
+  .fg-items label{display:flex;gap:6px;align-items:center;margin:3px 0;cursor:pointer;
+    font-size:12px;color:var(--ink-1);line-height:1.25}
+  .fg-items input{margin:0;accent-color:var(--seq-450);flex:0 0 auto}
+  #filterClear{width:100%;font-size:11.5px;padding:4px 10px;margin-top:2px}
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);
@@ -275,97 +291,14 @@
 <div class="failbar" id="failbar">⚠ DATA UNAVAILABLE — the feed could not be reached. You have <u>no visibility</u>; do not assume "no rain". Retry or use field reports.</div>
 <div class="seasonbar" id="seasonbar">ℹ Off-season (Nov–Apr): rainfall is not measured. Quiet readings mean the feed is inactive, not dry conditions.</div>
 
-<div class="tiles2">
-  <div class="tbig">
-    <div class="tile"><div class="k">Weather alerts</div><div class="v" id="kpiAlerts">–</div><div class="n" id="kpiAlertsN">loading…</div></div>
-    <div class="tile"><div class="k">Next 24 h</div><div class="v" id="kpiFc">–</div><div class="n" id="kpiFcN">loading forecast…</div></div>
-  </div>
-  <div class="tsmall">
-    <div class="tile"><div class="k">Worst gauge (24h total)</div><div class="v" id="kpiPeak">–</div><div class="n" id="kpiPeakN"></div></div>
-    <div class="tile"><div class="k">Gauges needing crew attention</div><div class="v" id="kpiAttn">–</div><div class="n" id="kpiAttnN"></div></div>
-    <div class="tile"><div class="k" id="kpiFloodK">311 flood reports (14 d)</div><div class="v" id="kpiFlood">–</div><div class="n" id="kpiFloodN">loading…</div></div>
-    <div class="tile"><div class="k">Pump stations to check</div><div class="v" id="kpiPumps">–</div><div class="n" id="kpiPumpsN"></div></div>
-    <div class="tile"><div class="k">Road closures</div><div class="v" id="kpiClosures">–</div><div class="n" id="kpiClosuresN"></div></div>
-    <div class="tile"><div class="k">EPCOR water incidents</div><div class="v" id="kpiEpcor">–</div><div class="n" id="kpiEpcorN">loading…</div></div>
-  </div>
+<div class="tabbar" id="topTabs">
+  <button id="tabBtnTable" class="active" type="button">📋 Station data</button>
+  <button id="tabBtnMaps" type="button">🗺 Maps</button>
+  <button id="tabBtnForecast" type="button">🌦 Weather forecast</button>
+  <button id="tabBtnStats" type="button">📊 Stats</button>
 </div>
-
-<div class="alertbar" id="alertbar">
-  <div class="lvl" id="alertLvl">–</div>
-  <div class="what">
-    <div class="band-name" id="alertBand">Loading citywide alert level…</div>
-    <div class="desc" id="alertDesc"></div>
-  </div>
-</div>
-
-<div class="panel" style="margin-bottom:14px">
-  <h2>Shift brief — the picture in one glance</h2>
-  <div class="brief">
-    <div class="b"><div class="bk">Now — rain on the ground</div><div class="bv" id="bfNow">assessing…</div></div>
-    <div class="b"><div class="bk">Changing — session trend</div><div class="bv" id="bfChange">building trend buffer…</div></div>
-    <div class="b"><div class="bk">Incoming — next 24 h</div><div class="bv" id="bfIn">loading forecast…</div></div>
-    <div class="b"><div class="bk">Crew work window — next 6 h</div><div class="bv" id="bfCrew">loading forecast…</div></div>
-    <div class="b"><div class="bk">ECCC weather alerts — Edmonton</div><div class="bv" id="bfAlerts">loading…</div></div>
-    <div class="b"><div class="bk">Blind spots</div><div class="bv" id="bfBlind">–</div></div>
-  </div>
-</div>
-
-<div class="panel" style="margin-bottom:14px">
-  <h2>Priorities — next 30 minutes</h2>
-  <ol class="prio" id="prioList"><li style="color:var(--ink-muted)">assessing…</li></ol>
-</div>
-
-<div class="panel" style="margin-bottom:14px">
-  <h2>Weather forecast — Environment Canada (Edmonton)</h2>
-  <div class="note" id="fcHead">loading forecast…</div>
-  <div class="note" id="fcCrew"></div>
-  <!-- rendered from ECCC's own citypageweather API (same data as weather.gc.ca) — our own
-       markup, so the layout is pixel-stable regardless of alert banners on their site -->
-  <div id="ecccTable" style="padding:0 14px 6px;color:var(--ink-muted);font-size:12px">loading Environment Canada forecast…</div>
-  <div class="note" style="padding:0 14px 10px"><span id="ecccIssuedAt"></span>
-    <a href="https://weather.gc.ca/en/location/index.html?coords=53.536,-113.494" target="_blank" rel="noopener"
-       style="color:var(--seq-450)">full Environment Canada page</a> (hourly forecast, current conditions)
-    — alert polygons are also on the map's "Weather alerts (ECCC)" layer.</div>
-</div>
-
-
-<div id="tabOps" class="tabpane active">
- <div class="panel" style="margin-bottom:14px">
-   <div class="filters" style="padding-top:10px">
-      <label>District <select id="fDistrict"><option value="">All</option></select></label>
-      <label>Station <select id="fStation"><option value="">All</option></select></label>
-      <label>Rating <select id="fRating"><option value="">All</option></select></label>
-      <label>Feed says <select id="fSays"><option value="">All</option></select></label>
-      <button id="fClear" type="button">Clear</button>
-      <span class="fnote">filters the station table and the map's markers (gauges, pumps, closures, 311 reports, cameras); district fill and citywide KPIs are unaffected</span>
-   </div>
- </div>
- <div class="panel" style="margin-bottom:14px">
-   <h2>Historical patterns — weather-related 311 reports per month</h2>
-   <details class="helpnote"><summary>ℹ How to read this heatmap</summary>
-   <div class="note">Grid heatmap for historical review: each row is a
-     <b>district or neighbourhood</b> (follows the Boundary buttons below), each column a
-     <b>month</b> of the selected date range (Quick range / From–To below), cell color = count
-     of <b>weather-related 311 reports</b> that month — flooding/ponding, drainage, snow,
-     windrows, plowing/blading, icy conditions and extreme weather (darker = more; both seasons
-     included so summer and winter patterns can be compared). Pick a district in the
-     filter bar above to zoom the rows to it — or <b>click any row label</b> to apply that
-     district to the map, station table and heatmap at once (click again to clear). Changing
-     the range or boundary also flips the map to 311-density view so all three stay in sync.
-     Hover any cell for the exact count. Note the first/last columns can be <b>partial months</b>
-     (the range may start or end mid-month), so they read lighter than a full month would.
-     <b>Gauge severity has no public history</b> — the rainfall feed is a live snapshot only,
-     so a severity-by-month grid cannot be built from the source (this dashboard never invents
-     history); 311 volume is the closest published month-by-month signal.</div>
-   </details>
-   <div class="hmwrap"><div id="hmGrid" class="hmgrid"></div></div>
-   <div class="note" id="hmStatus">loading heatmap…</div>
- </div>
+<div id="tabOps">
  <div class="sidewrap">
-  <div class="sidetabs">
-    <button id="sideBtnTable" class="active" type="button">📋 Station table</button>
-    <button id="sideBtnMaps" type="button">🗺 Maps</button>
-  </div>
   <div class="sidecontent">
   <div id="sideMaps" class="sidepane">
   <div class="panel">
@@ -458,25 +391,141 @@
          target="_blank" rel="noopener" style="color:var(--seq-450)">EPCOR water outage page</a>.</div>
     </details>
     <div style="display:flex;flex-wrap:wrap;gap:0">
-      <div id="map" style="flex:1 1 340px;min-width:0"></div>
-      <div class="layerpanel" id="layerPanel">
-        <div class="lp-title">Map layers</div>
+      <div class="mapside">
+        <div class="layerpanel" id="filterPanel">
+          <div class="lp-title">Filters — tick to show</div>
+          <div id="filterGroups"></div>
+          <button id="filterClear" type="button">Clear all filters</button>
+        </div>
+        <div class="layerpanel" id="layerPanel">
+          <div class="lp-title">Map layers</div>
+        </div>
       </div>
+      <div id="map" style="flex:1 1 340px;min-width:0"></div>
     </div>
+    <!-- simplified to 3 categories (was 6 — too many to read at a glance); the popup
+         carries the fine-grained EPCOR status text, incl. the no-water warning -->
     <div class="epcor-legend" id="epcorLegend" style="border-top:1px solid var(--grid)">
       <b style="font-size:11px">EPCOR:</b>
-      <span class="chip" title="Customers may have no water. Crews are responding.">
-        <span class="sw circ" style="background:#d03b3b"></span>no water — crews responding</span>
-      <span class="chip" title="Customers have water. Crews are responding.">
-        <span class="sw circ" style="background:#e8b60c"></span>water on — crews responding</span>
+      <span class="chip" title="Crews are responding to a water main break. The popup says whether customers may be out of water.">
+        <span class="sw circ" style="background:#d03b3b"></span>active outage — crews responding</span>
       <span class="chip" title="Water main break repaired. Awaiting surface restoration.">
-        <span class="sw circ" style="background:#2f9e44"></span>repaired, awaiting restoration</span>
-      <span class="chip" title="Water construction project. Possible water or road impact.">
-        <span class="sw tri"></span>construction</span>
-      <span class="chip" title="Water main flushing. Possible low water pressure.">
-        <span class="sw hex"></span>main flushing</span>
-      <span class="chip" title="Other customer impact.">⚠ other impact</span>
+        <span class="sw circ" style="background:#2f9e44"></span>repaired, restoring surface</span>
+      <span class="chip" title="Planned work: construction projects, water main flushing, and other customer impacts. Possible water pressure or road impact.">
+        <span class="sw hex" style="background:#e07b00"></span>planned work (construction · flushing · other)</span>
     </div>
+  </div>
+  </div>
+  <div id="sideTable" class="sidepane active">
+  <div class="tiles2">
+    <div class="tbig">
+      <div class="tile"><div class="k">Weather alerts</div><div class="v" id="kpiAlerts">–</div><div class="n" id="kpiAlertsN">loading…</div></div>
+      <div class="tile"><div class="k">Next 24 h</div><div class="v" id="kpiFc">–</div><div class="n" id="kpiFcN">loading forecast…</div></div>
+    </div>
+    <div class="tsmall">
+      <div class="tile"><div class="k">Worst gauge (24h total)</div><div class="v" id="kpiPeak">–</div><div class="n" id="kpiPeakN"></div></div>
+      <div class="tile"><div class="k">Gauges needing crew attention</div><div class="v" id="kpiAttn">–</div><div class="n" id="kpiAttnN"></div></div>
+      <div class="tile"><div class="k" id="kpiFloodK">311 flood reports (14 d)</div><div class="v" id="kpiFlood">–</div><div class="n" id="kpiFloodN">loading…</div></div>
+      <div class="tile"><div class="k">Pump stations to check</div><div class="v" id="kpiPumps">–</div><div class="n" id="kpiPumpsN"></div></div>
+      <div class="tile"><div class="k">Road closures</div><div class="v" id="kpiClosures">–</div><div class="n" id="kpiClosuresN"></div></div>
+      <div class="tile"><div class="k">EPCOR water incidents</div><div class="v" id="kpiEpcor">–</div><div class="n" id="kpiEpcorN">loading…</div></div>
+    </div>
+  </div>
+  <div class="alertbar" id="alertbar">
+    <div class="lvl" id="alertLvl">–</div>
+    <div class="what">
+      <div class="band-name" id="alertBand">Loading citywide alert level…</div>
+      <div class="desc" id="alertDesc"></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Shift brief — the picture in one glance</h2>
+    <div class="brief">
+      <div class="b"><div class="bk">Now — rain on the ground</div><div class="bv" id="bfNow">assessing…</div></div>
+      <div class="b"><div class="bk">Changing — session trend</div><div class="bv" id="bfChange">building trend buffer…</div></div>
+      <div class="b"><div class="bk">Incoming — next 24 h</div><div class="bv" id="bfIn">loading forecast…</div></div>
+      <div class="b"><div class="bk">Crew work window — next 6 h</div><div class="bv" id="bfCrew">loading forecast…</div></div>
+      <div class="b"><div class="bk">ECCC weather alerts — Edmonton</div><div class="bv" id="bfAlerts">loading…</div></div>
+      <div class="b"><div class="bk">Blind spots</div><div class="bv" id="bfBlind">–</div></div>
+    </div>
+  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Priorities — next 30 minutes</h2>
+    <ol class="prio" id="prioList"><li style="color:var(--ink-muted)">assessing…</li></ol>
+  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>Historical patterns — open weather-related 311 reports per month</h2>
+    <div class="mapmode-row">
+      <span class="searchwrap">
+        <input id="stnSearch" type="search" placeholder="🔍 filter table + heatmap by district / neighbourhood" autocomplete="off" spellcheck="false">
+      </span>
+      <label>Day range
+        <select id="hmPresetSel">
+          <option value="today">Today</option>
+          <option value="7d">Past week</option>
+          <option value="30d">Past month</option>
+          <option value="90d">Past 3 months</option>
+          <option value="365d" selected>Past year</option>
+          <option value="730d">Past 2 years</option>
+          <option value="all">All available (since Jan 2023)</option>
+          <option value="custom">Custom range</option>
+        </select>
+      </label>
+      <label>From <input type="date" id="hmFrom"></label>
+      <label>To <input type="date" id="hmTo"></label>
+      <label>Boundary</label>
+      <span class="segwrap" id="hmBoundaryBtns">
+        <button type="button" class="segbtn active" data-v="district">Districts (15)</button>
+        <button type="button" class="segbtn" data-v="neighbourhood">Neighbourhoods (407)</button>
+      </span>
+    </div>
+    <details class="helpnote"><summary>ℹ How to read this heatmap</summary>
+    <div class="note">Grid heatmap for historical review: each row is a
+      <b>district or neighbourhood</b> (Boundary buttons), each column a <b>month</b> of the
+      chosen Day range, cell color = count of <b>open weather-related 311 reports</b> that month
+      — flooding/ponding, drainage, snow, windrows, plowing/blading, icy conditions and extreme
+      weather (darker = more). <b>Open reports only</b> (user choice), so months older than a few
+      weeks read light — most reports close over time. The search box filters BOTH this heatmap
+      and the station table below by district/neighbourhood; clicking a row label does the same.
+      Hover any cell for the exact count. <b>Gauge severity has no public history</b> — the
+      rainfall feed is a live snapshot, so a severity-by-month grid can't be built (this dashboard
+      never invents history); open 311 volume is the closest published month-by-month signal.</div>
+    </details>
+    <div class="hmwrap"><div id="hmGrid" class="hmgrid"></div></div>
+    <div class="note" id="hmStatus">loading heatmap…</div>
+  </div>
+  <div class="panel">
+    <h2>Stations ranked by severity</h2>
+    <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
+    <div style="overflow-x:auto">
+    <table id="tbl" style="table-layout:fixed">
+      <thead><tr>
+        <th data-k="station" style="width:64px">Station</th>
+        <th data-k="district" style="width:110px">District</th>
+        <th style="width:96px">311 · closures</th>
+        <th class="num" data-k="mm" style="width:118px" id="th24h">24h rain gauge (mm)</th>
+        <th class="num" data-k="fc" style="width:132px" id="thFc"
+          title="model precipitation per hour — past 12 h in gray, next 12 h in amber, coming peak marked; sorts by the next-12h sum">Rain ±12 h (model, mm/h)</th>
+        <th data-k="rating" style="width:150px">Rating · action now</th>
+        <th data-k="says">Feed says</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+  </div>
+  </div>
+  <div id="sideForecast" class="sidepane">
+  <div class="panel">
+    <h2>7-day forecast — Environment Canada (Edmonton)</h2>
+    <div class="note" id="fcHead">loading forecast…</div>
+    <div class="note" id="fcCrew"></div>
+    <!-- rendered from ECCC's own citypageweather API (same data as weather.gc.ca) — our own
+         markup, so the layout is pixel-stable regardless of alert banners on their site -->
+    <div id="ecccTable" style="padding:0 14px 6px;color:var(--ink-muted);font-size:12px">loading Environment Canada forecast…</div>
+    <div class="note" style="padding:0 14px 10px"><span id="ecccIssuedAt"></span>
+      <a href="https://weather.gc.ca/en/location/index.html?coords=53.536,-113.494" target="_blank" rel="noopener"
+         style="color:var(--seq-450)">full Environment Canada page</a> (hourly forecast, current conditions)
+      — alert polygons are also on the map's "Weather alerts (ECCC)" layer.</div>
   </div>
   <div class="panel">
     <h2>Regional weather map — forecast animation (Windy.com)</h2>
@@ -500,33 +549,49 @@
           <span id="windyBtns"></span>
         </div>
         <iframe id="windyFrame" title="Windy.com regional weather forecast animation"
-          src="https://embed.windy.com/embed2.html?lat=53.55&lon=-113.50&detailLat=53.55&detailLon=-113.50&zoom=8&overlay=thunder&level=surface&menu=&message=true&marker=true&calendar=now&type=map&metricWind=km%2Fh&metricTemp=%C2%B0C&lang=en"
+          src="https://embed.windy.com/embed2.html?lat=53.55&lon=-113.50&detailLat=53.55&detailLon=-113.50&zoom=8&overlay=radar&level=surface&menu=&message=true&marker=true&calendar=now&type=map&metricWind=km%2Fh&metricTemp=%C2%B0C&lang=en"
           width="100%" height="600" style="border:0;border-radius:8px;margin-top:8px;height:clamp(480px,70vh,760px)"></iframe>
       </div>
     </div>
   </div>
   </div>
-  <div id="sideTable" class="sidepane active">
-  <div class="panel">
-    <h2>Stations ranked by severity</h2>
-    <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
-    <div style="overflow-x:auto">
-    <table id="tbl" style="table-layout:fixed">
-      <thead><tr>
-        <th data-k="station" style="width:64px">Station</th>
-        <th data-k="district" style="width:110px">District</th>
-        <th style="width:96px">311 · closures</th>
-        <th class="num" data-k="mm" style="width:118px">24h rain (mm)</th>
-        <th class="num" data-k="fc" style="width:132px"
-          title="model precipitation per hour — past 12 h in gray, next 12 h in amber, coming peak marked; sorts by the next-12h sum">Rain ±12 h (model, mm/h)</th>
-        <th data-k="rating" style="width:150px">Rating · action now</th>
-        <th data-k="says">Feed says</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
+  </div>
+ </div>
+
+ <div id="sideStats" class="sidepane">
+  <div class="panel" style="margin-bottom:14px">
+    <h2 id="statPrecipTitle">Monthly precipitation — 5-year average vs this year (ECCC Blatchford)</h2>
+    <div class="note">Bars = this year's monthly total to date · line = same-month average of the
+      previous 5 full years (2021–2025). Source: Environment Canada daily records, Blatchford
+      station (city centre), via Edmonton open data <code>s4ws-tdws</code>. ECCC's separate
+      rain/snow columns ended Dec 2025, so both tracking modes chart <b>total precipitation</b>
+      (rain + snow water equivalent) — the continuous official series.</div>
+    <div id="statPrecip" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
+  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>311 weather-related reports by month — open vs closed</h2>
+    <div class="mapmode-row" style="padding:0 14px 6px">
+      <label>Area</label>
+      <span class="segwrap" id="statAreaBtns">
+        <button type="button" class="segbtn active" data-v="city">Whole city</button>
+        <button type="button" class="segbtn" data-v="district">District</button>
+        <button type="button" class="segbtn" data-v="neighbourhood">Neighbourhood</button>
+      </span>
+      <select id="statAreaSel" style="display:none;max-width:230px"></select>
     </div>
+    <div class="note">Stacked bars = weather-related 311 reports opened that month, split by
+      today's status (amber = still open · blue = closed) · line = that calendar month's
+      average across all years on record. Source starts <b>Jan 2023</b> — a full 5-year 311
+      average does not exist; the line is the all-available-years average (2023→).</div>
+    <div id="stat311" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
-  </div>
+  <div class="panel" style="margin-bottom:14px">
+    <h2>EPCOR water incidents by district — current snapshot</h2>
+    <div class="note">Stacked bars = live incidents per district (red = active outage · green =
+      restoring · orange = planned work) · line = district total. EPCOR publishes a <b>live
+      snapshot only</b> — no public incident history exists, so this chart is "right now",
+      refreshed with the feed (~5 min).</div>
+    <div id="statEpcor" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
  </div>
 </div>
@@ -546,6 +611,15 @@
     <div id="miniMetrics" class="mm-row"></div>
     <div id="miniMapWrap" style="margin-top:12px;display:none">
       <div id="miniMapCap" style="font-size:12px;font-weight:650;margin-bottom:4px"></div>
+      <div id="miniMapLayers" style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;margin:0 0 6px;color:var(--ink-2)">
+        <b style="font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-muted)">Show:</b>
+        <label><input type="checkbox" data-ml="gauges" checked> Gauges</label>
+        <label><input type="checkbox" data-ml="flood" checked> 311 (open)</label>
+        <label><input type="checkbox" data-ml="epcor" checked> EPCOR</label>
+        <label><input type="checkbox" data-ml="pumps"> Pumps</label>
+        <label><input type="checkbox" data-ml="closures"> Closures</label>
+        <label><input type="checkbox" data-ml="cameras"> Cameras</label>
+      </div>
       <div id="miniMap" style="height:300px;border-radius:8px;background:var(--grid)"></div>
     </div>
     <div id="camModalGrid"></div>
@@ -639,7 +713,10 @@ function renderMiniMap(district, pt){
   document.getElementById("miniMapCap").textContent =
     d? `${d} highlighted — same view as the drainage map` : "drainage map view";
   if (!miniMap){
-    miniMap = L.map("miniMap", {attributionControl:false});
+    // MUST set an initial view: Leaflet can't project vector layers (the district polygons +
+    // gauge dots added just below) onto a map with no view yet — without this they never draw
+    // and the modal shows a bare basemap (the bug the user reported)
+    miniMap = L.map("miniMap", {attributionControl:false}).setView([53.54,-113.49], 10);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png").addTo(miniMap);
   }
   miniMapLayers.forEach(l=>miniMap.removeLayer(l)); miniMapLayers = [];
@@ -654,22 +731,39 @@ function renderMiniMap(district, pt){
     }
   }).addTo(miniMap);
   miniMapLayers.push(geo);
-  lastStations.filter(s=>s.lat!=null).forEach(s=>{ // gauge dots, map-1 design
-    const m = L.circleMarker([s.lat,s.lon],
-      {radius:5, color:"#fff", weight:1.5, fillColor:"#1a1a19", fillOpacity:.9});
-    m.bindTooltip(`${s.station}${s.hasReading? " · "+s.mm.toFixed(1)+" mm" : ""}`);
-    m.addTo(miniMap); miniMapLayers.push(m);
-  });
-  if (pt){ // station click: ring the gauge in question
-    const mk = L.circleMarker(pt, {radius:9, color:"#2a78d6", weight:3, fillOpacity:0});
-    mk.addTo(miniMap); miniMapLayers.push(mk);
-  }
+  miniRingPt = pt || null;
+  drawMiniMarkers(); // tickable marker groups (gauges/311/EPCOR/pumps/closures/cameras)
   setTimeout(()=>{ // the modal was display:none a tick ago — re-measure, then frame the area
     miniMap.invalidateSize();
     if (target) miniMap.fitBounds(L.geoJSON(target).getBounds(), {padding:[12,12]});
     else if (pt) miniMap.setView(pt, 12);
   }, 40);
 }
+// tickable layers for the modal mini-map (user request: "map in the prompt accessible to
+// filter that tick to show"). Redraws just the marker groups, never the polygons/view.
+let miniCtxLayers = [], miniRingPt = null;
+const miniLayerOn = {gauges:true, flood:true, epcor:true, pumps:false, closures:false, cameras:false};
+function drawMiniMarkers(){
+  if (!miniMap) return;
+  miniCtxLayers.forEach(l=>miniMap.removeLayer(l)); miniCtxLayers = [];
+  const add = (lat,lon,color,r,tip)=>{ if (lat==null) return;
+    const m = L.circleMarker([lat,lon],{radius:r,color:"#fff",weight:1,fillColor:color,fillOpacity:.9});
+    if (tip) m.bindTooltip(tip); m.addTo(miniMap); miniCtxLayers.push(m); };
+  const EK = {act:"#d03b3b", res:"#2f9e44", pln:"#e07b00"}; // simplified EPCOR categories
+  if (miniLayerOn.gauges) lastStations.filter(s=>s.lat!=null).forEach(s=>
+    add(s.lat,s.lon,"#1a1a19",5,`${s.station}${s.hasReading? " · "+s.mm.toFixed(1)+" mm":""}`));
+  if (miniLayerOn.flood) flood311List.forEach(f=> add(f.lat,f.lon,"#b56a00",5,`311: ${f.n} open`));
+  if (miniLayerOn.epcor) epcorList.forEach(e=> add(e.lat,e.lon,EK[e.kind]||"#d03b3b",5,{act:"EPCOR: active outage",res:"EPCOR: restoring",pln:"EPCOR: planned work"}[e.kind]||"EPCOR incident"));
+  if (miniLayerOn.pumps && pumpsList) pumpsList.forEach(p=> add(p.lat,p.lon,"#52514e",4,"Pump station"));
+  if (miniLayerOn.closures) closuresList.forEach(c=> add(c.lat,c.lon,c.emerg?"#d03b3b":"#eda100",4,c.emerg?"Emergency closure":"Closure"));
+  if (miniLayerOn.cameras) CAMERAS.forEach(c=> add(c.lat,c.lon,"#3a3935",4,"📷 "+c.loc));
+  if (miniRingPt){ // station click: ring the gauge in question, on top
+    const mk = L.circleMarker(miniRingPt, {radius:9, color:"#2a78d6", weight:3, fillOpacity:0});
+    mk.addTo(miniMap); miniCtxLayers.push(mk);
+  }
+}
+document.querySelectorAll("#miniMapLayers input[type=checkbox]").forEach(cb=>
+  cb.addEventListener("change", ()=>{ miniLayerOn[cb.dataset.ml] = cb.checked; drawMiniMarkers(); }));
 // area-scoped "metrics at a glance" for the modal: the top-section signals recomputed for
 // ONE district (and, on station clicks, that gauge's own reading + coming forecast) — same
 // source lists as the KPI tiles/crew context, so the numbers can never disagree with them
@@ -699,7 +793,7 @@ function miniMetrics(district, stationCode){
     const cl = closuresList.filter(c=>c.district===d), em = cl.filter(c=>c.emerg).length;
     cells.push(cell("Road closures", cl.length, em? `${em} EMERGENCY`:"", em? "var(--band-5)":"")); }
   if (epcorList.length){ assignDistrict(epcorList);
-    const inD = epcorList.filter(p=>p.district===d), red = inD.filter(p=>p.kind==="red").length;
+    const inD = epcorList.filter(p=>p.district===d), red = inD.filter(p=>p.noWater).length;
     cells.push(cell("EPCOR incidents", inD.length, red? `${red} no-water`:"", red? "var(--band-5)":"")); }
   if (pumpsList){ assignDistrict(pumpsList);
     cells.push(cell("Pump stations", pumpsList.filter(p=>p.district===d).length, "check during storms")); }
@@ -748,15 +842,19 @@ document.getElementById("camModalClose").addEventListener("click", closeCamModal
 document.getElementById("camModal").addEventListener("click", e=>{ if (e.target.id==="camModal") closeCamModal(); });
 // side panes: table is primary; both maps live behind the vertical side tab
 function showSidePane(which){
-  document.getElementById("sideTable").classList.toggle("active", which==="table");
-  document.getElementById("sideMaps").classList.toggle("active", which==="maps");
-  document.getElementById("sideBtnTable").classList.toggle("active", which==="table");
-  document.getElementById("sideBtnMaps").classList.toggle("active", which==="maps");
+  ["Table","Maps","Forecast","Stats"].forEach(n=>{
+    const key = n.toLowerCase();
+    document.getElementById("side"+n).classList.toggle("active", which===key);
+    document.getElementById("tabBtn"+n).classList.toggle("active", which===key);
+  });
   // Leaflet measured a hidden (0-size) container at init — re-measure when revealed
   if (which==="maps") setTimeout(()=>{ if (map) map.invalidateSize(); }, 30);
+  if (which==="stats") loadStats(); // charts fetch lazily on first open, then cache
 }
-document.getElementById("sideBtnTable").addEventListener("click", ()=>showSidePane("table"));
-document.getElementById("sideBtnMaps").addEventListener("click", ()=>showSidePane("maps"));
+document.getElementById("tabBtnTable").addEventListener("click", ()=>showSidePane("table"));
+document.getElementById("tabBtnMaps").addEventListener("click", ()=>showSidePane("maps"));
+document.getElementById("tabBtnForecast").addEventListener("click", ()=>showSidePane("forecast"));
+document.getElementById("tabBtnStats").addEventListener("click", ()=>showSidePane("stats"));
 // station AND district names both open the modal: 4 nearest live cams on top, mini map
 // (map-1 design, area highlighted) beneath
 document.querySelector("#tbl tbody").addEventListener("click", e=>{
@@ -873,8 +971,7 @@ function initMap(){
   // stopPropagation, so this only fires on genuinely empty ground)
   map.on("click", ()=>{
     if (selectedNei) toggleNeiSelection(selectedNei);
-    const fD = document.getElementById("fDistrict");
-    if (fD.value){ fD.value=""; fD.dispatchEvent(new Event("change")); }
+    if (filterSel.district.size){ filterSel.district.clear(); syncFilterChecks(); onFilterChange(); }
   });
   loadCameras();
   loadPumps();
@@ -893,7 +990,7 @@ const TRACK = {
     kpiTitle:"311 flood reports (14 d)", layerLabel:"311 flood reports (14d)",
     label311:"flood", redRe:/UNDERPASS/i, redLabel:"underpass flooding",
     pField:"precipitation", unit:"mm", word:"rain", extremeTot:25, extremeHr:10,
-    mapTitle:"Where it is raining hardest", windyOverlay:"thunder"},
+    mapTitle:"Where it is raining hardest", windyOverlay:"radar"},
   snow: {radar:"RADAR_1KM_RSNO", cov:"RADAR_COVERAGE_RSNO",
     where311:"(upper(service_description) LIKE '%SNOW%' OR upper(service_description) LIKE 'ICY%' OR upper(service_description) LIKE 'ICE %' OR upper(service_description) LIKE '%WINDROW%')",
     kpiTitle:"311 snow/ice reports (14 d)", layerLabel:"311 snow/ice reports (14d)",
@@ -917,8 +1014,9 @@ async function loadFlood311(){
   const cfg = trackCfg();
   try{
     const since = new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+    // OPEN reports only (user request) — closed ones are resolved, not actionable for a crew
     const q = "https://data.edmonton.ca/resource/q7ua-agfg.json?$where=" +
-      encodeURIComponent(`${cfg.where311} AND date_created > '${since}'`) +
+      encodeURIComponent(`${cfg.where311} AND date_created > '${since}' AND upper(request_status)='OPEN'`) +
       "&$select=service_description,request_status,date_created,neighbourhood,nbhd_latitude,nbhd_longitude&$limit=1000";
     const rows = await fetch(q).then(r=>r.json());
     flood311Layer.clearLayers(); // mode switches reload this layer wholesale
@@ -929,17 +1027,16 @@ async function loadFlood311(){
         {lat:+r.nbhd_latitude, lon:+r.nbhd_longitude, items:[]}).items.push(r);
     });
     flood311List = Object.values(byN).map(g=>({lat:g.lat, lon:g.lon, n:g.items.length}));
-    // KPI tile: total reports + the life-safety subset (underpass flooding / icy conditions)
+    // KPI tile: OPEN reports only + the life-safety subset (underpass flooding / icy conditions)
     const total = rows.filter(r=>r.nbhd_latitude).length;
     const red = rows.filter(r=>cfg.redRe.test(r.service_description||"")).length;
-    const open = rows.filter(r=>r.request_status==="Open").length;
     document.getElementById("kpiFloodK").textContent = cfg.kpiTitle;
     document.getElementById("kpiFlood").textContent = total;
     document.getElementById("kpiFlood").style.color = red? "var(--band-5)" : "";
     document.getElementById("kpiFloodN").innerHTML = total?
-      `${open} open` + (red? ` · <b style="color:var(--band-5)">${red} ${cfg.redLabel}</b>` : "") +
+      `open only` + (red? ` · <b style="color:var(--band-5)">${red} ${cfg.redLabel}</b>` : "") +
       ` · ${Object.keys(byN).length} neighbourhoods · daily feed` :
-      `none in the last 14 days`;
+      `no open reports in the last 14 days`;
     Object.entries(byN).forEach(([name,g])=>{
       const hot = g.items.some(i=>cfg.redRe.test(i.service_description||""));
       const m = L.marker([g.lat,g.lon],{icon:L.divIcon({className:"",
@@ -948,7 +1045,7 @@ async function loadFlood311(){
         iconSize:[18,18], iconAnchor:[9,9]})});
       const lines = g.items.slice(0,8).map(i=>
         `${(i.date_created||"").slice(5,10)} · ${i.service_description} <span style="color:#898781">(${i.request_status||"?"})</span>`).join("<br>");
-      m.bindPopup(`<b>311 ${cfg.label311} reports — ${name}</b> (last 14 days)<br>${lines}` +
+      m.bindPopup(`<b>311 ${cfg.label311} reports — ${name}</b> (open, last 14 days)<br>${lines}` +
         (g.items.length>8? `<br>… ${g.items.length-8} more` : "") +
         `<br><span style="color:#898781;font-size:10.5px">Marker = neighbourhood centroid, not an exact
         address; 311 updates daily, not real-time. Source: 311 Requests (q7ua-agfg)</span>`,{maxWidth:300});
@@ -968,16 +1065,17 @@ const epcorQ = svc => fetch(`${EPCOR_BASE}/${svc}/FeatureServer/0/query?where=1%
   .then(r=>r.json()).then(d=>d.features||[]).catch(()=>null); // null = that feed failed
 let epcorAt = 0;
 const epcorEsc = s => String(s??"").replace(/[<>&"]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+// SIMPLIFIED to 3 categories (user request — 6 EPCOR symbol types were too many to read):
+//   act = active outage (crews responding; EPCOR red + yellow) — red circle
+//   res = repaired, awaiting surface restoration — green circle
+//   pln = planned work (construction + main flushing + other events) — orange diamond
 function epcorIcon(kind){ // mirrors the .epcor-legend swatches exactly
   const circ = c => `<div style="width:14px;height:14px;border-radius:50%;background:${c};
     border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>`;
   const html = {
-    red:    circ("#d03b3b"), yellow: circ("#e8b60c"), green: circ("#2f9e44"),
-    tri:    `<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;
-             border-bottom:14px solid #e07b00;filter:drop-shadow(0 0 1px #fff)"></div>`,
-    hex:    `<div style="width:12px;height:12px;background:#7d4bbd;border:1.5px solid #fff;
-             border-radius:3px;transform:rotate(45deg);box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>`,
-    warn:   `<div style="font:700 13px/14px system-ui;color:#e8b60c;text-shadow:0 0 2px #fff">⚠</div>`
+    act: circ("#d03b3b"), res: circ("#2f9e44"),
+    pln: `<div style="width:12px;height:12px;background:#e07b00;border:1.5px solid #fff;
+          border-radius:3px;transform:rotate(45deg);box-shadow:0 0 0 1px rgba(0,0,0,.25)"></div>`
   }[kind];
   return L.divIcon({className:"", html, iconSize:[16,16], iconAnchor:[8,8]});
 }
@@ -999,41 +1097,39 @@ async function loadEpcor(){
     epcorLayer.addLayer(m);
     epcorList.push({lat, lon, kind});
   };
-  let nRed=0, nYellow=0, nGreen=0;
   (out||[]).forEach(f=>{
     const a = f.properties, s = a.Status||"";
-    const kind = /may be out of water/i.test(s)? (nRed++, "red")
-               : /repaired/i.test(s)? (nGreen++, "green") : (nYellow++, "yellow");
-    add(f, kind, `<b>${epcorEsc(a.Cause||"Water outage")}</b><br>${epcorEsc(s)}
+    const kind = /repaired/i.test(s)? "res" : "act"; // red+yellow merge into "active"
+    const noWater = /may be out of water/i.test(s);
+    add(f, kind, `<b>${epcorEsc(a.Cause||"Water outage")}</b>${noWater? ' — <b style="color:#d03b3b">customers may be out of water</b>':""}<br>${epcorEsc(s)}
       ${a.Details? `<br><span style="font-size:11px">${epcorEsc(a.Details)}</span>`:""}
       <br>Reported: ${epcorEsc(a.ReportDate||"?")} · Est. restored: ${epcorEsc(a.EstimateRe||"—")}`);
+    if (noWater) epcorList[epcorList.length-1].noWater = true;
   });
   (con||[]).forEach(f=>{ const a=f.properties;
-    add(f, "tri", `<b>Construction: ${epcorEsc(a.PR_NAME||a.PR_TYPE||"water project")}</b>
+    add(f, "pln", `<b>Construction: ${epcorEsc(a.PR_NAME||a.PR_TYPE||"water project")}</b>
       <br>${epcorEsc(a.PR_TYPE||"")} · ${epcorEsc(a.PR_STATUS||"")}<br>Possible water or road impact.`); });
   (udf||[]).forEach(f=>{ const a=f.properties;
-    add(f, "hex", `<b>Water main flushing</b> (${epcorEsc(a.UDFID||"scheduled")})
+    add(f, "pln", `<b>Water main flushing</b> (${epcorEsc(a.UDFID||"scheduled")})
       <br>Possible low water pressure.<br>${epcorEsc(a.SCHD_START||"")} → ${epcorEsc(a.SCHD_END||"")}`); });
   (gen||[]).forEach(f=>{ const a=f.properties;
-    add(f, "warn", `<b>${epcorEsc(a.Event||a.EventType||"Water event")}</b>
+    add(f, "pln", `<b>${epcorEsc(a.Event||a.EventType||"Water event")}</b>
       <br>${epcorEsc(a.Description||"Other customer impact.")}
       ${a.Location? `<br>${epcorEsc(a.Location)}`:""}`); });
   // KPI tile — derive every count from epcorList (the GEOCODED features actually on the map),
   // not the raw feed arrays, so the tile and the map markers can never disagree (some UDF /
   // generic rows have null geometry and are correctly absent from both)
   const kc = k => epcorList.filter(p=>p.kind===k).length;
-  const active = kc("red")+kc("yellow")+kc("green");
-  kv.textContent = active;
-  kv.style.color = kc("red")? "var(--band-5)" : "";
+  const noWater = epcorList.filter(p=>p.noWater).length;
+  kv.textContent = kc("act")+kc("res");
+  kv.style.color = noWater? "var(--band-5)" : "";
   const bits = [];
-  if (kc("red"))    bits.push(`${kc("red")} no water`);
-  if (kc("yellow")) bits.push(`${kc("yellow")} responding`);
-  if (kc("green"))  bits.push(`${kc("green")} restoring`);
-  if (kc("tri"))    bits.push(`${kc("tri")} construction`);
-  if (kc("hex"))    bits.push(`${kc("hex")} flushing`);
-  if (kc("warn"))   bits.push(`${kc("warn")} other`);
+  if (kc("act")) bits.push(`${kc("act")} active${noWater? ` (${noWater} no-water)`:""}`);
+  if (kc("res")) bits.push(`${kc("res")} restoring`);
+  if (kc("pln")) bits.push(`${kc("pln")} planned work`);
   kn.textContent = bits.length? bits.join(" · ") : "none reported";
   applyContextFilter();
+  loadStatEpcor && statLoaded && loadStatEpcor(); // refresh the stats chart with the new snapshot
 }
 
 // (ECCC GeoMet radar/alerts/lightning map + its animation engine removed 2026-07-13 at
@@ -1042,9 +1138,9 @@ async function loadEpcor(){
 // Windy overlay switcher — constant buttons OUTSIDE the iframe (its own menu can't be
 // restyled); each click reloads the embed with a different overlay= parameter
 // forecast-animating overlays first; "Rain & thunder" is the default (matches the iframe src)
-const WINDY_OVERLAYS = [["Rain & thunder","thunder"],["Snow accum.","snowAccu"],["Wind","wind"],
-  ["Rain accum.","rainAccu"],["Temperature","temp"],["Clouds","clouds"],["Satellite","satellite"],
-  ["Radar (live only)","radar"]];
+const WINDY_OVERLAYS = [["Radar","radar"],["Rain & thunder","thunder"],["Snow accum.","snowAccu"],
+  ["Wind","wind"],["Rain accum.","rainAccu"],["Temperature","temp"],["Clouds","clouds"],
+  ["Satellite","satellite"]];
 let setWindyOverlay = null; // set below; also called by setTrackMode (snow mode → Snow accum.)
 {
   const holder = document.getElementById("windyBtns");
@@ -1140,14 +1236,19 @@ function districtStations(name){ return lastStations.filter(s=>s.district===name
 // full color with an accent border and every other polygon fades back — muted but NOT flat
 // gray (user preference): each keeps its OWN fill color at ~1/3 opacity, so the citywide
 // pattern stays faintly readable behind the selection
-const selectedDistrict = () => (document.getElementById("fDistrict").value||"").replace(/^near /,"");
+// multi-select filter state: each category is a Set of ticked values (empty = "all").
+// District values are stored STRIPPED of the "near " prefix so a gauge in "near Southeast"
+// selects the Southeast polygon. This one object is the single source of truth for the
+// table, the gauge + context markers, the choropleth highlight, and the heatmap zoom.
+const filterSel = {district:new Set(), station:new Set(), rating:new Set(), says:new Set()};
+const anyDistrictSel = () => filterSel.district.size>0;
+const isDistrictSel = name => filterSel.district.has((name||"").replace(/^near /,""));
 const muted = style => ({...style, color:"#b9b8b0", weight:.7,
   fillOpacity: Math.max(.12, style.fillOpacity*.35)});
-const withSelection = (name, style) => {
-  const fD = selectedDistrict();
-  if (!fD) return style;
-  return name===fD ? {...style, color:"#2a78d6", weight:2.5} : muted(style);
-};
+// selected districts stay full-color with a blue accent border; the rest fade (own color kept,
+// ~1/3 opacity) so the citywide pattern still reads behind a multi-district selection
+const withSelection = (name, style) => !anyDistrictSel()? style
+  : (isDistrictSel(name)? {...style, color:"#2a78d6", weight:2.5} : muted(style));
 function districtStyle(name){
   if (mapMode==="density" && densityBoundary==="district")
     return withSelection(name, {color:"#898781", weight:1,
@@ -1198,7 +1299,7 @@ const todayLocalDate = () => { // Edmonton-local yyyy-mm-dd, for the date picker
 // match "Policy"/"License" — the documented trap): flood/ponding/drainage, snow/windrow/
 // plow/blading, icy/ice conditions, extreme weather. Both seasons stay included so historical
 // review can compare summer vs winter.
-const WEATHER311_WHERE = "(upper(service_description) LIKE '%FLOOD%'" +
+const WEATHER311_CATS = "(upper(service_description) LIKE '%FLOOD%'" +
   " OR upper(service_description) LIKE '%PONDING%'" +
   " OR upper(service_description) LIKE '%DRAINAGE%'" +
   " OR upper(service_description) LIKE '%SNOW%'" +
@@ -1209,6 +1310,11 @@ const WEATHER311_WHERE = "(upper(service_description) LIKE '%FLOOD%'" +
   " OR upper(service_description) LIKE '%PLOW%'" +
   " OR upper(service_description) LIKE '%BLADING%'" +
   " OR upper(service_description) LIKE '%EXTREME WEATHER%')";
+// OPEN reports only (user request), applied everywhere the density map + historical heatmap
+// + popup stats read 311 — closed reports are resolved; note this thins old heatmap months.
+// The Stats tab's open-vs-closed chart uses WEATHER311_CATS (no status clause) instead —
+// it needs BOTH statuses to stack them.
+const WEATHER311_WHERE = WEATHER311_CATS + " AND upper(request_status)='OPEN'";
 let mapMode = "severity", densityBoundary = "district";
 let densityFrom = "", densityTo = ""; // yyyy-mm-dd, user-editable date range (presets or custom)
 let neiFeats = [], neiLoaded = false, neiGeoJSON = null;
@@ -1261,9 +1367,8 @@ function neiStyle(name, district){
                 fillOpacity:.72};
   if (selectedNei) // neighbourhood spotlight takes precedence over district-level fading
     return name===selectedNei? {...base, color:"#2a78d6", weight:2.5} : muted(base);
-  const fD = selectedDistrict();
-  if (fD && district!==fD) return muted(base); // keeps its own color, faded — not flat gray
-  return fD? {...base, color:"#2a78d6", weight:1} : base;
+  if (!anyDistrictSel()) return base;
+  return isDistrictSel(district)? {...base, color:"#2a78d6", weight:1} : muted(base);
 }
 // concise popup (user request): count leads, no date range (it's already shown above the
 // map), and the pace line says plainly what drives the fill color
@@ -1401,7 +1506,10 @@ const setSeg = (wrapId, v) => document.querySelectorAll("#"+wrapId+" .segbtn")
 function setMapMode(v){
   mapMode = v;
   setSeg("mapMetricBtns", v);
-  // range/boundary controls stay visible in both modes — they also drive the historical heatmap
+  // density range/boundary/legend controls belong to density mode only (the heatmap has its own
+  // controls now) — hide them in the default severity view so the map reads as district fill
+  document.getElementById("densityControls").style.display = mapMode==="density"? "flex":"none";
+  document.getElementById("densityTotal").style.display = mapMode==="density"? "block":"none";
   document.getElementById("wardNoteSeverity").style.display = mapMode==="density"? "none":"block";
   document.getElementById("wardNoteDensity").style.display = mapMode==="density"? "block":"none";
   if (mapMode==="density") loadNeighbourhoods(loadDensity);
@@ -1416,25 +1524,24 @@ function syncDensityMap(){
   if (mapMode!=="density") setMapMode("density"); // loads density for the new range itself
   else loadDensity();
 }
+// Maps-tab density controls drive ONLY the map now — the heatmap has its own controls in the
+// Station tab (tabs are independent, user request), so no loadHeatmap() calls here
 document.getElementById("densityPresetSel").addEventListener("change", e=>{
   if (e.target.value==="custom") return; // user is about to edit From/To by hand
   applyDensityPreset(e.target.value);
   syncDensityMap();
-  loadHeatmap();
 });
 document.getElementById("densityFrom").addEventListener("change", e=>{
   densityFrom = e.target.value;
   if (densityFrom > densityTo){ densityTo = densityFrom; document.getElementById("densityTo").value = densityTo; }
   document.getElementById("densityPresetSel").value = "custom";
   syncDensityMap();
-  loadHeatmap();
 });
 document.getElementById("densityTo").addEventListener("change", e=>{
   densityTo = e.target.value;
   if (densityFrom > densityTo){ densityFrom = densityTo; document.getElementById("densityFrom").value = densityFrom; }
   document.getElementById("densityPresetSel").value = "custom";
   syncDensityMap();
-  loadHeatmap();
 });
 // ---------- area search: type-ahead over 15 districts + 407 neighbourhoods ----------
 // Selecting zooms the map to the area; if its polygon layer is currently displayed the real
@@ -1511,34 +1618,61 @@ document.querySelectorAll("#boundaryBtns .segbtn").forEach(b =>
 // clicking the already-selected district clears it
 function toggleDistrictSelection(d){
   if (!d) return;
-  const f = document.getElementById("fDistrict");
-  const has = [...f.options].some(o=>o.value===d);
-  f.value = (f.value===d || !has)? "" : d;
-  f.dispatchEvent(new Event("change"));
+  const name = d.replace(/^near /,"");
+  if (filterSel.district.has(name)) filterSel.district.delete(name);
+  else filterSel.district.add(name);
+  syncFilterChecks();   // reflect in the side-panel checkboxes
+  onFilterChange();
 }
+// heatmap row-label click → set the shared Station-tab search (filters table + heatmap);
+// clicking the active row clears it. Independent of the Maps-tab map selection.
 document.getElementById("hmGrid").addEventListener("click", e=>{
   const lab = e.target.closest(".hm-lab");
-  if (lab && lab.dataset.d) toggleDistrictSelection(lab.dataset.d);
+  if (!lab || !lab.dataset.d) return;
+  const el = document.getElementById("stnSearch");
+  el.value = (stnQuery === lab.dataset.d.toLowerCase())? "" : lab.dataset.d;
+  stnQuery = el.value.trim().toLowerCase();
+  rerender(); renderHeatmap();
 });
 
 // ---------- historical heatmap: 311 reports per month by district/neighbourhood ----------
 // One SoQL fetch per date range (group by neighbourhood + month); boundary/district changes
 // re-render client-side from the same rows. Severity-by-month is NOT offered here because the
 // gauge feed is a snapshot with no published history — 311 volume is the month-by-month signal.
-let hmData = null, hmReqId = 0; // [{nei, ym:"2025-07", n}]
+// Fully independent of the Maps-tab density controls (user: tabs are separate). The heatmap has
+// its OWN day range (hmFrom/hmTo), boundary (hmBoundary), and a text search (stnQuery) that is
+// SHARED with the station table below. 311 is OPEN-only (baked into WEATHER311_WHERE).
+let hmData = null, hmReqId = 0;
+let hmFrom = "", hmTo = "", hmBoundary = "district", stnQuery = "";
 function hmMonths(){
   const out = [];
-  const d = new Date(densityFrom.slice(0,7)+"-01T00:00:00");
-  const end = new Date(densityTo.slice(0,7)+"-01T00:00:00");
+  const d = new Date(hmFrom.slice(0,7)+"-01T00:00:00");
+  const end = new Date(hmTo.slice(0,7)+"-01T00:00:00");
   while (d <= end){ out.push(d.toISOString().slice(0,7)); d.setMonth(d.getMonth()+1); }
   return out;
+}
+function hmCutoff(){ return (hmFrom || DATA_311_START_DATE) + "T00:00:00.000"; }
+function hmUntil(){ const d = new Date((hmTo||todayLocalDate())+"T00:00:00"); d.setDate(d.getDate()+1); return d.toISOString().split(".")[0]; }
+function hmRangeLabel(){ const fmt=s=>new Date(s+"T00:00:00").toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"}); return `${fmt(hmFrom)} – ${fmt(hmTo)}`; }
+function hmApplyPreset(key){
+  const today = todayLocalDate(); let from;
+  if (DENSITY_PRESETS[key]==null) from = DATA_311_START_DATE;
+  else { const d=new Date(today+"T00:00:00"); d.setDate(d.getDate()-DENSITY_PRESETS[key]); from=d.toISOString().slice(0,10); if (from<DATA_311_START_DATE) from=DATA_311_START_DATE; }
+  hmFrom=from; hmTo=today;
+  document.getElementById("hmFrom").value=from; document.getElementById("hmTo").value=today;
+}
+function initHmRange(){
+  const today=todayLocalDate();
+  const f=document.getElementById("hmFrom"), t=document.getElementById("hmTo");
+  f.min=DATA_311_START_DATE; f.max=today; t.min=DATA_311_START_DATE; t.max=today;
+  hmApplyPreset("365d");
 }
 function loadHeatmap(){
   const my = ++hmReqId;
   const st = document.getElementById("hmStatus");
   st.textContent = "loading heatmap…";
   const url = "https://data.edmonton.ca/resource/q7ua-agfg.json?$select=neighbourhood,date_trunc_ym(date_created) as ym,count(*) as n"
-    + "&$where=" + encodeURIComponent(`date_created>='${densityCutoff()}' AND date_created<'${densityUntil()}' AND ${WEATHER311_WHERE}`)
+    + "&$where=" + encodeURIComponent(`date_created>='${hmCutoff()}' AND date_created<'${hmUntil()}' AND ${WEATHER311_WHERE}`)
     + "&$group=neighbourhood,ym&$limit=50000";
   fetch(url).then(r=>r.json()).then(rows=>{
     if (my !== hmReqId) return; // superseded by a newer range — discard
@@ -1553,42 +1687,62 @@ function renderHeatmap(){
   if (!hmData || !grid) return;
   const months = hmMonths();
   const nei2d = {}; neiFeats.forEach(f=>{ nei2d[f.properties.name] = f.properties.district; });
-  const fD = (document.getElementById("fDistrict").value||"").replace(/^near /,"");
+  const q = stnQuery; // shared search (matches the visible row name)
   const cells = {}, totals = {};
   hmData.forEach(r=>{
-    const d = nei2d[r.nei];
-    if (fD && d!==fD) return;            // District filter zooms the rows
-    const key = densityBoundary==="district" ? d : r.nei;
+    const key = hmBoundary==="district" ? nei2d[r.nei] : r.nei;
     if (!key) return;                     // neighbourhood with no district mapping, in rollup mode
+    if (q && !String(hmBoundary==="district"? key : titleCaseNei(key)).toLowerCase().includes(q)) return;
     (cells[key] ??= {})[r.ym] = (cells[key][r.ym]||0) + r.n;
     totals[key] = (totals[key]||0) + r.n;
   });
   let keys = Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
-  const CAP = 30; let capped = 0; // 407 neighbourhood rows are unreadable — cap unless zoomed
-  if (densityBoundary==="neighbourhood" && !fD && keys.length>CAP){ capped = keys.length-CAP; keys = keys.slice(0,CAP); }
+  const CAP = 30; let capped = 0; // 407 neighbourhood rows are unreadable — cap unless searched
+  if (hmBoundary==="neighbourhood" && !q && keys.length>CAP){ capped = keys.length-CAP; keys = keys.slice(0,CAP); }
   const max = Math.max(1, ...keys.flatMap(k=>months.map(m=>cells[k][m]||0)));
-  const lab = k => densityBoundary==="district"? k : titleCaseNei(k);
+  const lab = k => hmBoundary==="district"? k : titleCaseNei(k);
   const mLab = m => new Date(m+"-01T00:00:00").toLocaleDateString("en-CA",{month:"short", year:"2-digit"});
-  // FIXED cell size (not 1fr): a 2-month range must not stretch into giant slabs — the grid
-  // keeps the same cell footprint at any range and scrolls horizontally when months overflow
   grid.style.gridTemplateColumns = `170px repeat(${months.length}, 34px)`;
   let html = `<div></div>` + months.map(m=>`<div class="hm-x">${mLab(m)}</div>`).join("");
   keys.forEach(k=>{
-    const rowD = densityBoundary==="district"? k : (nei2d[k]||"");
-    html += `<div class="hm-lab${fD && rowD===fD? " active":""}" data-d="${rowD}"
-      title="${lab(k)} — ${totals[k].toLocaleString()} total · click to filter the map & table to ${rowD||"this district"}">${lab(k)}</div>`;
+    const name = lab(k), active = q && name.toLowerCase()===q;
+    html += `<div class="hm-lab${active? " active":""}" data-d="${name}"
+      title="${name} — ${totals[k].toLocaleString()} open total · click to filter table + heatmap">${name}</div>`;
     html += months.map(m=>{
       const v = cells[k][m]||0;
       return `<div class="hm-cell" style="background:${v? densityColor(v,max) : "var(--grid)"}"
-        title="${lab(k)} · ${mLab(m)}: ${v.toLocaleString()} report(s)"></div>`;
+        title="${name} · ${mLab(m)}: ${v.toLocaleString()} open report(s)"></div>`;
     }).join("");
   });
   grid.innerHTML = html;
-  st.innerHTML = `<b>${keys.length}</b> ${densityBoundary==="district"?"district":"neighbourhood"} row(s)
-    × <b>${months.length}</b> month(s) · ${densityRangeLabel()}${fD? ` · district: <b>${fD}</b>`:""}
-    ${capped? ` · showing top ${CAP} by total (${capped} more — pick a district in the filter bar to zoom)`:""}
-    · darkest cell = ${max.toLocaleString()} reports/month`;
+  st.innerHTML = `<b>${keys.length}</b> ${hmBoundary==="district"?"district":"neighbourhood"} row(s)
+    × <b>${months.length}</b> month(s) · ${hmRangeLabel()}${q? ` · search: <b>${q}</b>`:""}
+    ${capped? ` · showing top ${CAP} by total (${capped} more — search to narrow)`:""}
+    · darkest cell = ${max.toLocaleString()} open/month`;
 }
+// Station-tab heatmap controls (independent of the Maps tab)
+initHmRange();
+document.getElementById("hmPresetSel").addEventListener("change", e=>{
+  if (e.target.value==="custom") return;
+  hmApplyPreset(e.target.value); loadHeatmap();
+});
+document.getElementById("hmFrom").addEventListener("change", e=>{
+  hmFrom=e.target.value; if (hmFrom>hmTo){ hmTo=hmFrom; document.getElementById("hmTo").value=hmTo; }
+  document.getElementById("hmPresetSel").value="custom"; loadHeatmap();
+});
+document.getElementById("hmTo").addEventListener("change", e=>{
+  hmTo=e.target.value; if (hmFrom>hmTo){ hmFrom=hmTo; document.getElementById("hmFrom").value=hmFrom; }
+  document.getElementById("hmPresetSel").value="custom"; loadHeatmap();
+});
+document.querySelectorAll("#hmBoundaryBtns .segbtn").forEach(b=>b.addEventListener("click", ()=>{
+  hmBoundary=b.dataset.v;
+  document.querySelectorAll("#hmBoundaryBtns .segbtn").forEach(x=>x.classList.toggle("active", x===b));
+  renderHeatmap();
+}));
+document.getElementById("stnSearch").addEventListener("input", e=>{
+  stnQuery = e.target.value.trim().toLowerCase();
+  rerender(); renderHeatmap(); // shared: filters BOTH the table and the heatmap
+});
 loadHeatmap();
 
 // crew task card: what a dispatched crew is driving into — computed at popup-open time
@@ -1607,7 +1761,7 @@ function crewContext(name){
     bits.push(`${pondsList.filter(p=>p.district===name).length} storm pond(s)`); }
   if (epcorList.length){ assignDistrict(epcorList);
     const inD = epcorList.filter(p=>p.district===name);
-    const red = inD.filter(p=>p.kind==="red").length;
+    const red = inD.filter(p=>p.noWater).length;
     if (inD.length) bits.push(`<b style="color:#b53a3a">${inD.length} EPCOR incident(s)${red? ` (${red} no-water)`:""}</b>`); }
   if (closuresList.length){ assignDistrict(closuresList);
     const cl = closuresList.filter(c=>c.district===name), em = cl.filter(c=>c.emerg).length;
@@ -1854,25 +2008,59 @@ function districtCtxCell(district){
 //  forecast; the full session line chart still lives in each gauge's dot popup)
 
 // ---------- filters ----------
-function filterValues(){
-  return { district: document.getElementById("fDistrict").value,
-           station: document.getElementById("fStation").value,
-           rating:  document.getElementById("fRating").value,
-           says:    document.getElementById("fSays").value };
+function filterValues(){ return filterSel; } // the Sets are the source of truth
+// after any filter change: prune dropped values, re-render table + gauges (render() also does
+// restyleWards + applyContextFilter), re-zoom the heatmap, and restyle the neighbourhood layer
+function onFilterChange(){
+  selectedNei = null;              // district selection and the nei spotlight never stack
+  rerender();
+  renderHeatmap();
+  if (neiGeoJSON) neiGeoJSON.setStyle(f=>neiStyle(f.properties.name, f.properties.district));
 }
+// tick the side-panel checkboxes to match filterSel (used after a map/heatmap click toggles it)
+function syncFilterChecks(){
+  document.querySelectorAll("#filterGroups input[type=checkbox]").forEach(cb=>{
+    cb.checked = filterSel[cb.dataset.cat].has(cb.value);
+  });
+  updateFilterCounts();
+}
+// build the markable filter checklists into the left side panel; rebuilt only when the option
+// set changes (a signature guard) so a normal tick never resets the panel's scroll position
+let filterSig = "";
 function syncFilterOptions(stations){
-  const fill = (id, vals, fmt) => {
-    const el = document.getElementById(id), cur = el.value;
-    el.innerHTML = '<option value="">All</option>' +
-      vals.map(v=>`<option value="${String(v).replace(/"/g,"&quot;")}">${fmt? fmt(v):v}</option>`).join("");
-    if ([...el.options].some(o=>o.value===cur)) el.value = cur; // keep selection across refreshes
-  };
-  fill("fDistrict", [...new Set(stations.map(s=>s.district).filter(Boolean))].sort());
-  fill("fStation", stations.map(s=>s.station));
-  fill("fRating", [...new Set(stations.filter(s=>s.hasReading).map(s=>s.rating))].sort((a,b)=>a-b).map(String),
-       v => `${v} — ${bandOf(+v).name}`);
-  fill("fSays", [...new Set(stations.filter(s=>s.desc).map(s=>s.desc))],
-       v => v.length>60? v.slice(0,57)+"…" : v);
+  const cats = [
+    {key:"district", title:"District",
+     vals:[...new Set(stations.map(s=>(s.district||"").replace(/^near /,"")).filter(Boolean))].sort(),
+     fmt:v=>v},
+    {key:"rating", title:"Rating",
+     vals:[...new Set(stations.filter(s=>s.hasReading).map(s=>s.rating))].sort((a,b)=>a-b).map(String),
+     fmt:v=>`${v} — ${bandOf(+v).name}`},
+    {key:"station", title:"Station", vals:stations.map(s=>s.station), fmt:v=>v},
+    {key:"says", title:"Feed says",
+     vals:[...new Set(stations.filter(s=>s.desc).map(s=>s.desc))],
+     fmt:v=>v.length>40? v.slice(0,37)+"…" : v}
+  ];
+  const sig = cats.map(c=>c.key+":"+c.vals.join("|")).join("§");
+  if (sig===filterSig){ syncFilterChecks(); return; } // options unchanged → just refresh ticks
+  filterSig = sig;
+  const esc = v => String(v).replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+  document.getElementById("filterGroups").innerHTML = cats.map((c,i)=>
+    `<details class="fg"${i<2?" open":""}><summary>${c.title}<span class="cnt" data-sum="${c.key}"></span></summary>
+      <div class="fg-items">${c.vals.map(v=>
+        `<label><input type="checkbox" data-cat="${c.key}" value="${esc(v)}"
+          ${filterSel[c.key].has(String(v))?"checked":""}>${esc(c.fmt(v))}</label>`).join("")}
+      </div></details>`).join("");
+  document.querySelectorAll("#filterGroups input[type=checkbox]").forEach(cb=>
+    cb.addEventListener("change", ()=>{
+      cb.checked? filterSel[cb.dataset.cat].add(cb.value) : filterSel[cb.dataset.cat].delete(cb.value);
+      onFilterChange();
+    }));
+  updateFilterCounts();
+}
+function updateFilterCounts(){
+  document.querySelectorAll("#filterGroups .cnt").forEach(el=>{
+    const n = filterSel[el.dataset.sum].size; el.textContent = n? ` (${n})` : "";
+  });
 }
 let lastRows = null;
 function rerender(){ if (lastRows) render(lastRows); }
@@ -1907,18 +2095,15 @@ document.querySelectorAll("#tbl th[data-k]").forEach(th => th.addEventListener("
     th.appendChild(rz);
   });
 }
-["fDistrict","fStation","fRating","fSays"].forEach(id => document.getElementById(id).addEventListener("change", rerender));
-// the District filter also zooms the historical heatmap's rows (same data, re-grouped) and
-// drives the map's selection highlight (chosen district vivid, everything else muted)
+// (filter checkboxes wire themselves to onFilterChange in syncFilterOptions)
 function restyleBoundaries(){
   restyleWards();
   if (neiGeoJSON) neiGeoJSON.setStyle(f=>neiStyle(f.properties.name, f.properties.district));
 }
-// picking a district (or clearing filters) drops any neighbourhood spotlight — the two
-// selection levels never stack, so the fading on screen always has one readable meaning
-document.getElementById("fDistrict").addEventListener("change", ()=>{ selectedNei = null; renderHeatmap(); restyleBoundaries(); });
-document.getElementById("fClear").addEventListener("click",
-  ()=>{ ["fDistrict","fStation","fRating","fSays"].forEach(id=>document.getElementById(id).value=""); selectedNei = null; rerender(); renderHeatmap(); restyleBoundaries(); });
+document.getElementById("filterClear").addEventListener("click", ()=>{
+  Object.values(filterSel).forEach(s=>s.clear());
+  selectedNei = null; syncFilterChecks(); onFilterChange();
+});
 
 // ---------- render ----------
 function render(rows){
@@ -2075,14 +2260,19 @@ function render(rows){
     prio.map(p=>`<li style="border-left-color:${p.c}"><span class="verb">${p.verb}</span> — ${p.txt}</li>`).join("") :
     `<li style="border-left-color:var(--band-0)"><span class="verb">ROUTINE MONITORING</span> — No station is at Monitor or above and no gauge is blind. Next reassessment on auto-refresh.</li>`;
 
-  // filters — repopulate options (preserving selection), then read active values
+  // filters — rebuild the Maps-tab markable checklists (preserving ticks). Independent tabs:
+  // `passesMap` (filterSel Sets) governs the MAP's gauge markers; `passesTable` (the shared
+  // Station-tab search `stnQuery`, matching station code or district) governs the TABLE.
   syncFilterOptions(stations);
   const fv = filterValues();
-  const passes = s => (!fv.district || s.district===fv.district) &&
-                      (!fv.station || s.station===fv.station) &&
-                      (!fv.rating || (s.hasReading && String(s.rating)===fv.rating)) &&
-                      (!fv.says   || s.desc===fv.says);
-  const anyFilter = !!(fv.district || fv.station || fv.rating || fv.says);
+  const passesMap = s => (!fv.district.size || fv.district.has((s.district||"").replace(/^near /,""))) &&
+                      (!fv.station.size  || fv.station.has(s.station)) &&
+                      (!fv.rating.size   || (s.hasReading && fv.rating.has(String(s.rating)))) &&
+                      (!fv.says.size     || fv.says.has(s.desc));
+  const anyMapFilter = fv.district.size || fv.station.size || fv.rating.size || fv.says.size;
+  const passesTable = s => !stnQuery || s.station.toLowerCase().includes(stnQuery)
+                       || (s.district||"").toLowerCase().includes(stnQuery);
+  const anyFilter = !!stnQuery;
 
   // table — blind spots (vanished or unreadable stations) pinned on top, styled as such
   const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
@@ -2105,7 +2295,7 @@ function render(rows){
     action: (a,b)=> (a.s.rating||0)-(b.s.rating||0),
     says: (a,b)=> a.s.desc.localeCompare(b.s.desc)
   }[sortState.k] || null;
-  const sorted = trends.filter(({s}) => passes(s) || (!anyFilter && !s.hasReading))
+  const sorted = trends.filter(({s}) => passesTable(s) || (!anyFilter && !s.hasReading))
     .sort((a,b)=>{ // blind rows stay pinned on top regardless of sort
       if (a.s.hasReading !== b.s.hasReading) return a.s.hasReading? 1 : -1;
       return cmp? cmp(a,b)*sortState.dir : 0;
@@ -2156,7 +2346,7 @@ function render(rows){
       g.bindPopup(`<b>${id}</b> — ⚠ no visibility<br>${why}<br>Blind spot, not calm.`);
       markerLayer.addLayer(g);
     };
-    stations.filter(s=>s.lat!=null && (passes(s) || !s.hasReading)).forEach(s=>{
+    stations.filter(s=>s.lat!=null && (passesMap(s) || !s.hasReading)).forEach(s=>{
       if (!s.hasReading){ ghost(s.station, s.lat, s.lon, "Reading missing or malformed in the feed."); return; }
       const b = bandOf(s.rating);
       // small uniform dot: the ward fill carries severity; the dot marks where the
@@ -2182,7 +2372,7 @@ function render(rows){
 // marker resolves its district once (point-in-polygon, cached on the marker), then hides
 // via CSS so toggling layers/filters never rebuilds the layer data
 function applyContextFilter(){
-  const d = filterValues().district;
+  const sel = filterSel.district; // Set of stripped names, empty = show all
   [pumpLayer, closureLayer, cameraLayer, flood311Layer, epcorLayer].forEach(layer=>{
     if (!layer) return;
     layer.eachLayer(m=>{
@@ -2190,7 +2380,7 @@ function applyContextFilter(){
         const ll = m.getLatLng();
         m._district = districtFeats.length? districtOf(ll.lat, ll.lng) : undefined;
       }
-      const show = !d || m._district===d || m._district==="near "+d;
+      const show = !sel.size || sel.has((m._district||"").replace(/^near /,""));
       const el = m.getElement && m.getElement();
       if (el) el.style.display = show? "" : "none";
     });
@@ -2202,7 +2392,7 @@ function applyContextFilter(){
 // gauge beats a backward-looking flat line for the pre-positioning call. One batched call —
 // Open-Meteo accepts comma-separated coordinate lists — cached 30 min. Model forecast;
 // gauges remain ground truth. The per-station 24h session line still lives in the dot popup.
-let stationFc = {}, stationFcMax = 1, stationFcAt = 0;
+let stationFc = {}, stationFcMax = 1, stationFcAt = 0, stationFcField = "precipitation";
 let stationFcH = {}, stationFcHMax = .1; // hourly series per station + global hourly max (shared y-scale)
 let fcExtreme = false; // set by loadForecast; drives the PRE-INSPECT priority
 // mini line chart spanning PAST 12 h → now → NEXT 12 h (user request), with a labelled time
@@ -2210,19 +2400,24 @@ let fcExtreme = false; // set by loadForecast; drives the PRE-INSPECT priority
 // half is Open-Meteo's model estimate (gray) — context for whether rain is arriving or leaving —
 // NOT gauge history; the gauge ground truth stays in the 24h rain column. No mm total shown
 // (removed at user request); rows still sort by the next-12h sum. One shared y-scale.
+// compact clock label, Edmonton time: "10p" / "10a" — used for the axis end labels
+const fcClock = t => new Date(t).toLocaleTimeString("en-CA",{hour:"numeric",timeZone:"America/Edmonton"})
+  .replace(/[\s.]/g,"").replace(/m$/,"").toLowerCase();
 function stationFcCell(st){
   const h = stationFcH[st];
   if (!h) return `<span style="color:var(--ink-muted)">…</span>`;
+  const unit = trackCfg().unit; // mm (rain) / cm (snow)
   const W = 116, Hh = 46, base = Hh-16, top = 6, n = h.p.length;
   const nowX = (h.nowIdx/(n-1))*W;
+  // x axis shows the ACTUAL clock times 12 h before, now, and 12 h ahead (user request)
   const axis = `<line x1="${nowX.toFixed(1)}" y1="${top-2}" x2="${nowX.toFixed(1)}" y2="${base}"
       stroke="var(--baseline)" stroke-width="1" stroke-dasharray="2,2"/>
-    <text x="0" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)">-12h</text>
+    <text x="0" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)">${fcClock(h.t[0])}</text>
     <text x="${nowX.toFixed(1)}" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)" text-anchor="middle">now</text>
-    <text x="${W}" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)" text-anchor="end">+12h</text>`;
+    <text x="${W}" y="${Hh-3}" font-size="8.5" fill="var(--ink-muted)" text-anchor="end">${fcClock(h.t[n-1])}</text>`;
   const future = h.p.slice(h.nowIdx);
   if (Math.max(...h.p) < .05)
-    return `<span title="no meaningful precipitation at this gauge — past 12 h (model) or next 12 h">
+    return `<span title="no meaningful ${trackCfg().word} at this gauge — past 12 h (model) or next 12 h">
       <svg width="${W}" height="${Hh}" style="vertical-align:middle">
       <line x1="0" y1="${base}" x2="${W}" y2="${base}" stroke="var(--grid)" stroke-width="1.5"/>${axis}
       <text x="2" y="12" font-size="9.5" fill="var(--ink-muted)">dry ±12 h</text></svg></span>`;
@@ -2231,32 +2426,34 @@ function stationFcCell(st){
   const seg = (from,to) => h.p.slice(from,to+1).map((v,i)=>`${x(from+i).toFixed(1)},${y(v||0).toFixed(1)}`).join(" ");
   const pkF = future.indexOf(Math.max(...future)), pk = h.nowIdx + pkF;
   const px = x(pk), py = y(h.p[pk]);
-  const pkTime = new Date(h.t[pk]).toLocaleTimeString("en-CA",{hour:"numeric"}).replace(/\s/g,"").toLowerCase();
+  const pkTime = fcClock(h.t[pk]);
   const peak = h.p[pk] >= .05?
     `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2.6" fill="var(--band-5)"/>
      <text x="${px.toFixed(1)}" y="${Math.max(9, py-5).toFixed(1)}" font-size="9" font-weight="700"
        text-anchor="${px > W*0.6? "end" : (px < W*0.25? "start" : "middle")}"
        fill="var(--ink-1)">${h.p[pk].toFixed(1)}@${pkTime}</text>` : "";
-  return `<span title="model precipitation, past 12 h (gray) → next 12 h (amber)${h.p[pk]>=.05? ` · coming peak ${h.p[pk].toFixed(1)} mm/h around ${pkTime}`:""}">
+  return `<span title="model ${trackCfg().word}, past 12 h (gray) → next 12 h (amber)${h.p[pk]>=.05? ` · coming peak ${h.p[pk].toFixed(1)} ${unit}/h around ${pkTime}`:""}">
     <svg width="${W}" height="${Hh}" style="vertical-align:middle">${axis}
     <polyline points="${seg(0, h.nowIdx)}" fill="none" stroke="var(--ink-muted)" stroke-width="1.5" opacity=".7"/>
     <polyline points="${seg(h.nowIdx, n-1)}" fill="none" stroke="var(--band-3)" stroke-width="1.8"/>
     ${peak}</svg></span>`;
 }
 async function loadStationFc(){
-  if (Date.now()-stationFcAt < 30*60*1000 && Object.keys(stationFc).length) return;
+  if (Date.now()-stationFcAt < 30*60*1000 && Object.keys(stationFc).length && stationFcField===trackCfg().pField) return;
   const sts = lastStations.filter(s=>s.lat!=null);
   if (!sts.length) return;
+  const field = trackCfg().pField; // precipitation (rain) / snowfall (snow) — tracks the mode
+  stationFcField = field;
   try{
     const url = "https://api.open-meteo.com/v1/forecast?latitude=" + sts.map(s=>s.lat.toFixed(3)).join(",") +
       "&longitude=" + sts.map(s=>s.lon.toFixed(3)).join(",") +
-      "&hourly=precipitation&past_hours=12&forecast_hours=12&timezone=America%2FEdmonton";
+      "&hourly=" + field + "&past_hours=12&forecast_hours=12&timezone=America%2FEdmonton";
     let res = await fetch(url).then(r=>r.json());
     if (!Array.isArray(res)) res = [res]; // single-point responses arrive unwrapped
     stationFc = {}; stationFcH = {};
     res.forEach((r,i)=>{
       const H = r.hourly; if (!H) return;
-      const p = H.precipitation.map(v=>v||0);
+      const p = (H[field]||[]).map(v=>v||0);
       let nowIdx = H.time.findIndex(t=>Date.parse(t)>=Date.now());
       if (nowIdx < 0) nowIdx = p.length-1;
       stationFc[sts[i].station] = p.slice(nowIdx).reduce((a,v)=>a+v,0); // sort key: next-12h sum
@@ -2502,21 +2699,176 @@ function setTrackMode(mode){
   loadFlood311();          // re-query with the mode's categories (also updates KPI + markers)
   fcCache = {t:0};
   loadForecast();          // recompute the 24h brief + crew window on the mode's variable
+  stationFcAt = 0;         // force the per-station column to re-fetch on the mode's variable
+  loadStationFc();
   rerender();
 }
-// mode-dependent static text: map panel title + the map legend's 311 phrase/red meaning —
-// these must never claim snowfall gauge measurements (the network is rain-only)
+// mode-dependent static text: map panel title, map legend's 311 phrase/red meaning, and the
+// two forecast-bearing table headers. The 24h GAUGE column stays rain-only in both modes (the
+// network measures rain; off-season it is inactive) — snow mode says so rather than fabricating
+// snow-gauge readings; only the model forecast column actually switches to snowfall.
 function applyTrackLabels(cfg){
   document.getElementById("mapH2").textContent = cfg.mapTitle;
   const ph = document.getElementById("legend311Phrase");
   if (ph) ph.textContent = `311 ${cfg.label311} reports`;
   const rd = document.getElementById("legend311Red");
   if (rd) rd.textContent = `red = ${cfg.redLabel}`;
+  const th24 = document.getElementById("th24h");
+  if (th24) th24.textContent = cfg.word==="snow"? "24h rain gauge (mm, rain only)" : "24h rain gauge (mm)";
+  const thFc = document.getElementById("thFc");
+  if (thFc) thFc.textContent = cfg.word==="snow"? "Snow ±12 h (model, cm/h)" : "Rain ±12 h (model, mm/h)";
 }
 applyTrackLabels(trackCfg());
 if (trackMode==="snow" && setWindyOverlay) setWindyOverlay(trackCfg().windyOverlay);
 document.getElementById("trackSel").value = trackMode;
 document.getElementById("trackSel").addEventListener("change", e=>setTrackMode(e.target.value));
+
+// ---------- Stats tab: three combo charts (stacked bars + line), hand-rolled SVG ----------
+// One shared renderer so the three charts read as one system. Bars are the period values,
+// the line is the comparison series; one y axis (same unit) — never a dual axis.
+function comboChart({labels, series, line, unit, xEvery}){
+  const W=860, H=250, padL=46, padR=12, padT=14, padB=34;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const n = labels.length;
+  const totals = labels.map((_,i)=> series.reduce((a,s)=>a+(s.values[i]||0),0));
+  const yMax = Math.max(1, ...totals, ...(line? line.values.filter(v=>v!=null):[]))*1.08;
+  const X = i => padL + (i+0.5)*(plotW/n);
+  const Y = v => padT + plotH - (v/yMax)*plotH;
+  const bw = Math.max(3, Math.min(26, (plotW/n)*0.62));
+  let out = "";
+  for (let g=0; g<=3; g++){ // recessive grid + y ticks
+    const v = yMax*g/3;
+    out += `<line x1="${padL}" y1="${Y(v)}" x2="${W-padR}" y2="${Y(v)}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${padL-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9.5" fill="var(--ink-muted)">${v>=10? Math.round(v): v.toFixed(1)}</text>`;
+  }
+  labels.forEach((lab,i)=>{
+    let y0 = Y(0);
+    series.forEach(s=>{
+      const v = s.values[i]||0; if (!v) return;
+      const h = (v/yMax)*plotH;
+      out += `<rect x="${(X(i)-bw/2).toFixed(1)}" y="${(y0-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h-1,1).toFixed(1)}" rx="1.5" fill="${s.color}"><title>${lab} — ${s.name}: ${v>=10? Math.round(v): (+v).toFixed(1)} ${unit}</title></rect>`;
+      y0 -= h;
+    });
+    if (i % (xEvery||1) === 0) out += `<text x="${X(i).toFixed(1)}" y="${H-padB+13}" text-anchor="middle" font-size="9.5" fill="var(--ink-muted)">${lab}</text>`;
+  });
+  if (line){
+    const pts = line.values.map((v,i)=> v==null? null : [X(i), Y(v)]);
+    let d="", pen=false;
+    pts.forEach(p=>{ if(!p){pen=false;return;} d += (pen?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1); pen=true; });
+    out += `<path d="${d}" fill="none" stroke="var(--ink-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`;
+    pts.forEach((p,i)=>{ if(p) out += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="var(--ink-1)" stroke="var(--surface-1)" stroke-width="1.2"><title>${labels[i]} — ${line.name}: ${(+line.values[i]).toFixed(1)} ${unit}</title></circle>`; });
+  }
+  const legend = [...series.map(s=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px"><span style="width:10px;height:10px;border-radius:2px;background:${s.color}"></span>${s.name}</span>`),
+    line? `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:0;border-top:2.5px solid var(--ink-1)"></span>${line.name}</span>` : ""].join("");
+  return `<div style="font-size:11.5px;color:var(--ink-2);margin:6px 0 2px">${legend}
+      <span style="float:right;color:var(--ink-muted)">${unit}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block" role="img">${out}
+      <line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--baseline)" stroke-width="1"/></svg>`;
+}
+const MONTHS_S = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+let statLoaded = {precip:false, e311:false, epcor:false};
+function loadStats(){ loadStatPrecip(); loadStat311(); loadStatEpcor(); }
+
+// Chart A — monthly precipitation: 5-yr average (2021–2025) line vs this year's bars
+async function loadStatPrecip(){
+  if (statLoaded.precip) return;
+  try{
+    const rows = await fetch("https://data.edmonton.ca/resource/s4ws-tdws.json?$select=year,month,sum(total_precipitation_mm) as p" +
+      "&$where=" + encodeURIComponent("station_name='EDMONTON BLATCHFORD' AND date>='2021-01-01'") +
+      "&$group=year,month&$order=year,month&$limit=100").then(r=>r.json());
+    const yr = new Date().getFullYear();
+    const avg = Array.from({length:12},()=>({s:0,n:0})), cur = Array(12).fill(null);
+    rows.forEach(r=>{
+      const y=+r.year, m=+r.month-1, p=+r.p||0;
+      if (y>=yr-5 && y<yr){ avg[m].s+=p; avg[m].n++; }
+      if (y===yr) cur[m]=p;
+    });
+    document.getElementById("statPrecip").innerHTML = comboChart({
+      labels: MONTHS_S, unit:"mm",
+      series: [{name:`${yr} monthly total`, color:"var(--seq-450)", values: cur.map(v=>v??0)}],
+      line: {name:`${yr-5}–${yr-1} same-month average`, values: avg.map(a=>a.n? a.s/a.n : null)}
+    });
+    statLoaded.precip = true;
+  }catch(e){ document.getElementById("statPrecip").textContent="climate data unavailable"; console.warn(e); }
+}
+
+// Chart B — 311 weather reports per month, open vs closed, area-convertible
+let statArea = {mode:"city", name:""};
+function statAreaClause(){
+  if (statArea.mode==="district" && statArea.name){
+    const neis = neiFeats.filter(f=>f.properties.district===statArea.name).map(f=>f.properties.name);
+    if (neis.length) return " AND neighbourhood in(" + neis.map(n=>`'${n.replace(/'/g,"''")}'`).join(",") + ")";
+  }
+  if (statArea.mode==="neighbourhood" && statArea.name)
+    return ` AND neighbourhood='${statArea.name.replace(/'/g,"''")}'`;
+  return "";
+}
+async function loadStat311(force){
+  if (statLoaded.e311 && !force) return;
+  const el = document.getElementById("stat311");
+  el.textContent = "loading…";
+  try{
+    // WEATHER311_CATS (not _WHERE): this chart stacks open vs closed, so the map's
+    // open-only status clause must NOT apply here
+    const rows = await fetch("https://data.edmonton.ca/resource/q7ua-agfg.json?$select=date_trunc_ym(date_created) as mo,request_status,count(*) as n" +
+      "&$where=" + encodeURIComponent(WEATHER311_CATS + statAreaClause()) +
+      "&$group=mo,request_status&$order=mo&$limit=400").then(r=>r.json());
+    const byMo = {};
+    rows.forEach(r=>{
+      const k = (r.mo||"").slice(0,7); if (!k) return;
+      (byMo[k] = byMo[k]||{open:0,closed:0})[r.request_status==="Open"? "open":"closed"] += +r.n||0;
+    });
+    const keys = Object.keys(byMo).sort();
+    if (!keys.length){ el.textContent = "no weather-related 311 reports for this area"; statLoaded.e311=true; return; }
+    const labels = keys.map(k=>MONTHS_S[+k.slice(5)-1]+" "+k.slice(2,4));
+    const open = keys.map(k=>byMo[k].open), closed = keys.map(k=>byMo[k].closed);
+    // line: that calendar month's average across all years on record (2023→)
+    const calAvg = Array.from({length:12},()=>({s:0,n:0}));
+    keys.forEach(k=>{ const m=+k.slice(5)-1; calAvg[m].s += byMo[k].open+byMo[k].closed; calAvg[m].n++; });
+    const lineVals = keys.map(k=>{ const a=calAvg[+k.slice(5)-1]; return a.n? a.s/a.n : null; });
+    el.innerHTML = comboChart({labels, unit:"reports", xEvery: Math.ceil(keys.length/14),
+      series: [{name:"closed", color:"var(--seq-450)", values: closed},
+               {name:"still open", color:"var(--band-3)", values: open}],
+      line: {name:"same-month average, all years", values: lineVals}});
+    statLoaded.e311 = true;
+  }catch(e){ el.textContent="311 stats unavailable"; console.warn(e); }
+}
+function syncStatAreaSel(){
+  const sel = document.getElementById("statAreaSel");
+  sel.style.display = statArea.mode==="city"? "none":"inline-block";
+  if (statArea.mode==="district")
+    sel.innerHTML = districtFeats.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name))
+      .map(f=>`<option>${f.properties.name}</option>`).join("");
+  else if (statArea.mode==="neighbourhood")
+    sel.innerHTML = neiFeats.slice().sort((a,b)=>a.properties.name.localeCompare(b.properties.name))
+      .map(f=>`<option value="${f.properties.name}">${titleCaseNei(f.properties.name)}</option>`).join("");
+  statArea.name = sel.value || "";
+}
+document.querySelectorAll("#statAreaBtns .segbtn").forEach(b=>b.addEventListener("click", ()=>{
+  statArea.mode = b.dataset.v;
+  document.querySelectorAll("#statAreaBtns .segbtn").forEach(x=>x.classList.toggle("active", x===b));
+  loadNeighbourhoods(()=>{ syncStatAreaSel(); loadStat311(true); }); // nei polygons carry the district roll-up
+}));
+document.getElementById("statAreaSel").addEventListener("change", e=>{ statArea.name = e.target.value; loadStat311(true); });
+
+// Chart C — EPCOR incidents by district: stacked by simplified category + total line.
+// The feed is a LIVE SNAPSHOT (no public history), so this is "right now".
+function loadStatEpcor(){
+  const el = document.getElementById("statEpcor");
+  if (!epcorList.length || !districtFeats.length){ el.textContent = "waiting for the EPCOR feed…"; setTimeout(loadStatEpcor, 2500); return; }
+  assignDistrict(epcorList);
+  const byD = {};
+  epcorList.forEach(p=>{
+    const d = p.district || "outside city";
+    (byD[d] = byD[d]||{act:0,res:0,pln:0})[p.kind] = (byD[d][p.kind]||0)+1;
+  });
+  const keys = Object.keys(byD).sort((a,b)=>{ const t=x=>byD[x].act+byD[x].res+byD[x].pln; return t(b)-t(a); });
+  el.innerHTML = comboChart({labels: keys.map(k=>k.length>14? k.slice(0,13)+"…":k), unit:"incidents",
+    series: [{name:"active outage", color:"#d03b3b", values: keys.map(k=>byD[k].act)},
+             {name:"restoring", color:"#2f9e44", values: keys.map(k=>byD[k].res)},
+             {name:"planned work", color:"#e07b00", values: keys.map(k=>byD[k].pln)}],
+    line: {name:"district total", values: keys.map(k=>byD[k].act+byD[k].res+byD[k].pln)}});
+}
 
 initMap();
 load();
