@@ -896,6 +896,13 @@ document.getElementById("tabBtnTable").addEventListener("click", ()=>showSidePan
 document.getElementById("tabBtnMaps").addEventListener("click", ()=>showSidePane("maps"));
 document.getElementById("tabBtnForecast").addEventListener("click", ()=>showSidePane("forecast"));
 document.getElementById("tabBtnStats").addEventListener("click", ()=>showSidePane("stats"));
+// deep-link a tab on load: ?tab=table|maps|forecast|stats (lets you share/bookmark a tab).
+// Deferred to window load so every const/let below (TRACK, statLoaded, …) is initialized
+// before showSidePane→loadStats runs — otherwise the deep-link hits a temporal-dead-zone error.
+window.addEventListener("load", ()=>{
+  const t = new URLSearchParams(location.search).get("tab");
+  if (t && ["table","maps","forecast","stats"].includes(t)) showSidePane(t);
+});
 // station AND district names both open the modal: 4 nearest live cams on top, mini map
 // (map-1 design, area highlighted) beneath
 document.querySelector("#tbl tbody").addEventListener("click", e=>{
