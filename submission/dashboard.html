@@ -948,8 +948,8 @@ function initMap(){
   cameraLayer = L.layerGroup();
   flood311Layer = L.layerGroup().addTo(map); // default ON: sparse (~a dozen badges) and it is
                                              // the only between-gauges ground truth on the map
-  epcorLayer = L.layerGroup().addTo(map);    // default ON (user request): EPCOR's live network
-                                             // incidents are the sewer-telemetry stand-in
+  epcorLayer = L.layerGroup().addTo(map);    // default OFF since 2026-07-18 (user request:
+                                             // only district fill + 311 marked by default)
   // (regional weather view is the Windy.com embed below the map — the in-app ECCC WMS
   //  map was removed 2026-07-13 at user request; Windy's timeline covers forecast animation)
   // layer toggles live in a constant side panel (#layerPanel), not on the map canvas —
@@ -1362,7 +1362,7 @@ const WEATHER311_WHERE = WEATHER311_CATS + " AND upper(request_status)='OPEN'";
 // and the stacked-composition comparison chart. The three buckets partition WEATHER311_CATS.
 const CAT311 = {
   flood:  "(upper(service_description) LIKE '%FLOOD%' OR upper(service_description) LIKE '%PONDING%' OR upper(service_description) LIKE '%DRAINAGE%')",
-  snow:   "(upper(service_description) LIKE '%SNOW%' OR upper(service_description) LIKE 'ICY%' OR upper(service_description) LIKE '%ICE CONDITIONS%' OR upper(service_description) LIKE '%WINDROW%' OR upper(service_description) LIKE '%PLOW%' OR upper(service_description) LIKE '%BLADING%')",
+  snow:   "(upper(service_description) LIKE '%SNOW%' OR upper(service_description) LIKE 'ICY%' OR upper(service_description) LIKE '%ICY CONDITIONS%' OR upper(service_description) LIKE '%ICE CONDITIONS%' OR upper(service_description) LIKE '%WINDROW%' OR upper(service_description) LIKE '%PLOW%' OR upper(service_description) LIKE '%BLADING%')",
   extreme:"(upper(service_description) LIKE '%EXTREME WEATHER%')"
 };
 const catOf = s => { s=(s||"").toUpperCase();
@@ -2338,8 +2338,10 @@ function render(rows){
 
   // table — blind spots (vanished or unreadable stations) pinned on top, styled as such
   const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
+  // blind-spot rows are NEVER filtered out by the table search or map filters — a vanished
+  // gauge silently disappearing from a filtered view is exactly the wrong-decision failure
+  // this dashboard exists to prevent (critic finding, /evaluate run 2026-07-18)
   const missingRows = missing
-    .filter(id => !anyFilter || fv.station===id)
     .map(id => `<tr class="blind">
       <td><b>${id}</b></td><td>—</td>
       <td><span style="color:var(--ink-muted)">—</span></td>
@@ -2924,7 +2926,8 @@ async function loadStatPrecip(){
       `Bars = ${toY} monthly ${label} · ` +
       (hasAvg? `line = same-month average of <b>${fromY}–${toY-1}</b> (the earlier years in your selected date range).`
              : `only one year in the selected range — no average line.`) +
-      ` Follows the shared date range above. Source: ${src}.`;
+      ` Follows the shared date range above. Source: ${src}.` +
+      (toY===new Date().getFullYear()? ` <b>The current month is partial and later ${toY} months have no data yet</b> — an empty bar there means "not observed", not zero.` : "");
     el.innerHTML = comboChart({
       labels: MONTHS_S, unit, dec:1,
       series: [{name:`${toY} monthly`, color:"var(--seq-450)", values: cur.map(v=>v??0)}],
@@ -3047,7 +3050,13 @@ document.querySelectorAll("#statCmpBtns .segbtn").forEach(b=>b.addEventListener(
 // The feed is a LIVE SNAPSHOT (no public history), so this is "right now".
 function loadStatEpcor(){
   const el = document.getElementById("statEpcor");
-  if (!epcorList.length || !districtFeats.length){ el.textContent = "waiting for the EPCOR feed…"; setTimeout(loadStatEpcor, 2500); return; }
+  if (!epcorList.length || !districtFeats.length){
+    // bounded retry: after ~30 s an empty feed is a failure, not "pending" — say so
+    loadStatEpcor._tries = (loadStatEpcor._tries||0)+1;
+    if (loadStatEpcor._tries > 12){ el.textContent = "EPCOR feed unreachable — no snapshot to chart (retry by reopening this tab)"; loadStatEpcor._tries = 0; return; }
+    el.textContent = "waiting for the EPCOR feed…"; setTimeout(loadStatEpcor, 2500); return;
+  }
+  loadStatEpcor._tries = 0;
   assignDistrict(epcorList);
   const byD = {};
   epcorList.forEach(p=>{
@@ -3056,7 +3065,10 @@ function loadStatEpcor(){
   });
   const keys = Object.keys(byD).sort((a,b)=>{ const t=x=>byD[x].act+byD[x].res+byD[x].pln; return t(b)-t(a); });
   const totals = keys.map(k=>byD[k].act+byD[k].res+byD[k].pln);
-  const avg = totals.length? totals.reduce((a,b)=>a+b,0)/totals.length : 0;
+  // divide by ALL districts (15), not just those with incidents — otherwise the reference
+  // line overstates the norm on quiet days (critic finding, /evaluate run 2026-07-18)
+  const nD = Math.max(districtFeats.length, keys.length) || 1;
+  const avg = totals.reduce((a,b)=>a+b,0)/nD;
   // color VALUE (single-hue lightness ramp) not hue — darkest = most urgent (active outage)
   el.innerHTML = comboChart({labels: keys.map(k=>k.length>14? k.slice(0,13)+"…":k), unit:"incidents", dec:0,
     series: [{name:"active outage", color:"#12447e", values: keys.map(k=>byD[k].act)},
