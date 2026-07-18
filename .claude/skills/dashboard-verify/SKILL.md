@@ -308,6 +308,11 @@ against the source independently.
      precipitation chart (climate records) and EPCOR (live snapshot) have their own sources and
      ignore these — the panel note says so; that's the honest handling of "one filter for all
      charts", not a bug.
+   - **CAT311 union INVARIANT**: the three CAT311 category patterns together must equal
+     WEATHER311_CATS exactly — a missing pattern silently undercounts the stats charts vs
+     the map (found by /evaluate T8: CAT311.snow lacked '%ICY CONDITIONS%', dashboard said
+     23,147 for Jan-26 closed vs the source's 24,539). If either constant changes, re-run
+     the T8 cross-check.
    - **311 area comparison** (`#statCmp`, 2026-07-18): now a **100%-stacked composition** via
      `pctBarChart()` — each district/neighbourhood bar is full width, split by category SHARE
      (flood/snow/extreme, `CAT_COLOR`), % labels inside wide segments, raw total at the right;
