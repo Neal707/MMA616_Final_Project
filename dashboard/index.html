@@ -184,9 +184,15 @@
   .brief .bk{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-muted);margin-bottom:3px}
   .brief .bv{font-size:13px;font-weight:600;line-height:1.35}
   .brief .bvbig{font-size:21px;font-weight:750;line-height:1.1} /* enlarged all-clear status */
-  /* stats "cells" (panels): centered, charts inside fill them at width:100% */
-  #sideStats .panel{max-width:73%;margin-left:auto;margin-right:auto}
-  @media(max-width:900px){#sideStats .panel{max-width:100%}}
+  /* stats: two charts per row; Filters spans the top full width */
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media(max-width:900px){.statgrid{grid-template-columns:1fr}}
+  /* enlarged Filters panel */
+  #statFilters h2{font-size:16px}
+  #statFilters .mapmode-row{gap:14px}
+  #statFilters .mapmode-row > label{font-size:14px}
+  #statFilters input[type=date]{font-size:14px;padding:5px 9px}
+  #statFilters #statCatBtns{font-size:14px}
   .tabpane > .panel + .panel{margin-top:14px}
   .layerpanel{flex:0 0 200px;padding:10px 14px;border-left:1px solid var(--grid);font-size:12.5px}
   .layerpanel .lp-title{font-size:11px;text-transform:uppercase;letter-spacing:.04em;
@@ -563,7 +569,7 @@
  </div>
 
  <div id="sideStats" class="sidepane">
-  <div class="panel" style="margin-bottom:14px">
+  <div class="panel" id="statFilters" style="margin-bottom:14px">
     <h2>Filters</h2>
     <div class="mapmode-row" style="padding:0 14px 4px">
       <label>From <input type="date" id="stat311From" min="2023-01-01"></label>
@@ -584,12 +590,13 @@
       charts (precipitation is climate data, not 311). The EPCOR snapshot is live-only with no
       history, so it ignores both — its caption says so.</div></details>
   </div>
-  <div class="panel" style="margin-bottom:14px">
+  <div class="statgrid">
+  <div class="panel">
     <h2 id="statPrecipTitle">Monthly precipitation — 5-year average vs this year (ECCC Blatchford)</h2>
     <div class="note" id="statPrecipNote">loading…</div>
     <div id="statPrecip" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
-  <div class="panel" style="margin-bottom:14px">
+  <div class="panel">
     <h2>311 weather-related reports by month — open vs closed</h2>
     <div class="mapmode-row" style="padding:0 14px 6px">
       <label>Area</label>
@@ -607,7 +614,7 @@
       average does not exist; the line is the all-available-years average (2023→).</div></details>
     <div id="stat311" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
-  <div class="panel" style="margin-bottom:14px">
+  <div class="panel">
     <h2>311 weather reports — district / neighbourhood comparison</h2>
     <div class="mapmode-row" style="padding:0 14px 6px">
       <label>Compare</label>
@@ -624,7 +631,7 @@
       neighbourhood tag can't be placed and are excluded.</div></details>
     <div id="statCmp" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
   </div>
-  <div class="panel" style="margin-bottom:14px">
+  <div class="panel">
     <h2>EPCOR water incidents by district — current snapshot</h2>
     <details class="helpnote"><summary>ℹ How to read this chart</summary>
     <div class="note">Stacked bars = live incidents per district, shaded by urgency (light →
@@ -633,6 +640,7 @@
       exists, so a true 5-year average is impossible; the per-district average stands in as the
       reference line. Refreshed with the feed (~5 min).</div></details>
     <div id="statEpcor" style="padding:0 14px 12px;color:var(--ink-muted);font-size:12px">loading…</div>
+  </div>
   </div>
  </div>
 </div>
