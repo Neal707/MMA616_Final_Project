@@ -466,17 +466,35 @@
   </div>
   <div class="panel">
     <h2>Stations ranked by severity</h2>
+    <div class="mapmode-row" style="margin-bottom:8px">
+      <span class="searchwrap">
+        <input id="tblSearch" type="search" placeholder="🔍 filter by station or district" autocomplete="off" spellcheck="false">
+      </span>
+      <label>Action band
+        <select id="tblBandSel">
+          <option value="0">All bands</option>
+          <option value="3">≥ 3 Monitor</option>
+          <option value="4">≥ 4 Dispatch</option>
+          <option value="5">≥ 5 Barricade</option>
+          <option value="6">≥ 6 Escalate</option>
+        </select>
+      </label>
+      <label>District
+        <select id="tblDistrictSel"><option value="">All districts</option></select>
+      </label>
+      <button type="button" class="segbtn" id="tblFilterClear">Clear</button>
+    </div>
     <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
     <div style="overflow-x:auto">
     <table id="tbl" style="table-layout:fixed">
       <thead><tr>
-        <th data-k="station" style="width:64px">Station</th>
-        <th data-k="district" style="width:110px">District</th>
-        <th style="width:96px">311 · closures</th>
-        <th class="num" data-k="mm" style="width:118px" id="th24h">24h rain gauge (mm)</th>
-        <th class="num" data-k="fc" style="width:132px" id="thFc"
+        <th data-k="station" style="width:58px">Station</th>
+        <th data-k="district" style="width:104px">District</th>
+        <th style="width:88px">311 · closures</th>
+        <th class="num" data-k="mm" style="width:112px" id="th24h">24h rain gauge (mm)</th>
+        <th class="num" data-k="fc" style="width:124px" id="thFc"
           title="model precipitation per hour — past 12 h in gray, next 12 h in amber, coming peak marked; sorts by the next-12h sum">Rain ±12 h (model, mm/h)</th>
-        <th data-k="rating" style="width:150px">Rating · action now</th>
+        <th data-k="rating" style="width:130px">Rating · action now</th>
         <th data-k="says">Feed says</th>
       </tr></thead>
       <tbody></tbody>
@@ -1708,6 +1726,10 @@ document.getElementById("hmGrid").addEventListener("click", e=>{
 // no longer text-filtered (the search moved to the heatmap on the Stats tab).
 let hmData = null, hmReqId = 0, hmLoaded = false;
 let hmBoundary = "district", hmQuery = "", stnQuery = "";
+// station-table filter bar (Station data tab): text search + min action band + district.
+// Blind-spot rows are exempt from all three (a vanished gauge must never hide) — enforced
+// in render() where missingRows are appended unconditionally.
+let tblBand = 0, tblDistrict = "";
 function hmFromVal(){ return document.getElementById("stat311From").value || DATA_311_START_DATE; }
 function hmToVal(){ return document.getElementById("stat311To").value || todayLocalDate(); }
 function hmMonths(){
@@ -2106,6 +2128,21 @@ function updateFilterCounts(){
 }
 let lastRows = null;
 function rerender(){ if (lastRows) render(lastRows); }
+// station-table filter bar (search / action band / district) — drives passesTable in render()
+{
+  const q = document.getElementById("tblSearch");
+  const bnd = document.getElementById("tblBandSel");
+  const dst = document.getElementById("tblDistrictSel");
+  const clr = document.getElementById("tblFilterClear");
+  if (q)   q.addEventListener("input", e=>{ stnQuery = e.target.value.trim().toLowerCase(); rerender(); });
+  if (bnd) bnd.addEventListener("change", e=>{ tblBand = +e.target.value||0; rerender(); });
+  if (dst) dst.addEventListener("change", e=>{ tblDistrict = e.target.value; rerender(); });
+  if (clr) clr.addEventListener("click", ()=>{
+    stnQuery = ""; tblBand = 0; tblDistrict = "";
+    if (q) q.value = ""; if (bnd) bnd.value = "0"; if (dst) dst.value = "";
+    rerender();
+  });
+}
 // column sorting: click a header to sort; numeric columns start descending (worst first)
 let sortState = {k:"rating", dir:-1};
 document.querySelectorAll("#tbl th[data-k]").forEach(th => th.addEventListener("click", ()=>{
@@ -2312,9 +2349,20 @@ function render(rows){
                       (!fv.rating.size   || (s.hasReading && fv.rating.has(String(s.rating)))) &&
                       (!fv.says.size     || fv.says.has(s.desc));
   const anyMapFilter = fv.district.size || fv.station.size || fv.rating.size || fv.says.size;
-  const passesTable = s => !stnQuery || s.station.toLowerCase().includes(stnQuery)
-                       || (s.district||"").toLowerCase().includes(stnQuery);
-  const anyFilter = !!stnQuery;
+  const passesTable = s => {
+    if (stnQuery && !(s.station.toLowerCase().includes(stnQuery) || (s.district||"").toLowerCase().includes(stnQuery))) return false;
+    if (tblDistrict && (s.district||"").replace(/^near /,"") !== tblDistrict) return false;
+    if (tblBand && (!s.hasReading || s.rating < tblBand)) return false; // band applies only to real readings
+    return true;
+  };
+  const anyFilter = !!(stnQuery || tblDistrict || tblBand);
+  // keep the district dropdown populated from the live station set (once per render is cheap)
+  const dsel = document.getElementById("tblDistrictSel");
+  if (dsel){
+    const ds = [...new Set(stations.map(s=>(s.district||"").replace(/^near /,"")).filter(Boolean))].sort();
+    const want = '<option value="">All districts</option>' + ds.map(d=>`<option${d===tblDistrict?" selected":""}>${d}</option>`).join("");
+    if (dsel.dataset.sig !== want){ dsel.innerHTML = want; dsel.dataset.sig = want; }
+  }
 
   // table — blind spots (vanished or unreadable stations) pinned on top, styled as such
   const maxMm = Math.max(1, ...withReading.map(s=>s.mm));
@@ -2339,7 +2387,9 @@ function render(rows){
     action: (a,b)=> (a.s.rating||0)-(b.s.rating||0),
     says: (a,b)=> a.s.desc.localeCompare(b.s.desc)
   }[sortState.k] || null;
-  const sorted = trends.filter(({s}) => passesTable(s) || (!anyFilter && !s.hasReading))
+  // non-reading rows (present but malformed) always show, like the vanished-gauge missingRows —
+  // a blind spot must never be filtered away (critic rule); band/search/district scope readings only
+  const sorted = trends.filter(({s}) => !s.hasReading || passesTable(s))
     .sort((a,b)=>{ // blind rows stay pinned on top regardless of sort
       if (a.s.hasReading !== b.s.hasReading) return a.s.hasReading? 1 : -1;
       return cmp? cmp(a,b)*sortState.dir : 0;
