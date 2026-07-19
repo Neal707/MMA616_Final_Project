@@ -51,7 +51,8 @@
   .tbig .tile .v{font-size:38px}
   .tbig .tile .n{font-size:13px}
   .tsmall{flex:1.6 1 420px;min-width:0;display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;align-content:stretch}
+    grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:stretch}
+  @media(max-width:640px){.tsmall{grid-template-columns:repeat(2,minmax(0,1fr))}}
   .tile{background:var(--surface-1);border:1px solid var(--ring);border-radius:10px;padding:12px 14px}
   .tile .k{font-size:13.5px;font-weight:700;color:var(--ink-1)}
   .tile .v{font-size:26px;font-weight:700;margin-top:2px}
@@ -463,47 +464,6 @@
     <h2>Priorities — next 30 minutes</h2>
     <ol class="prio" id="prioList"><li style="color:var(--ink-muted)">assessing…</li></ol>
   </div>
-  <div class="panel" style="margin-bottom:14px">
-    <h2>Historical patterns — open weather-related 311 reports per month</h2>
-    <div class="mapmode-row">
-      <span class="searchwrap">
-        <input id="stnSearch" type="search" placeholder="🔍 filter table + heatmap by district / neighbourhood" autocomplete="off" spellcheck="false">
-      </span>
-      <label>Day range
-        <select id="hmPresetSel">
-          <option value="today">Today</option>
-          <option value="7d">Past week</option>
-          <option value="30d">Past month</option>
-          <option value="90d">Past 3 months</option>
-          <option value="365d" selected>Past year</option>
-          <option value="730d">Past 2 years</option>
-          <option value="all">All available (since Jan 2023)</option>
-          <option value="custom">Custom range</option>
-        </select>
-      </label>
-      <label>From <input type="date" id="hmFrom"></label>
-      <label>To <input type="date" id="hmTo"></label>
-      <label>Boundary</label>
-      <span class="segwrap" id="hmBoundaryBtns">
-        <button type="button" class="segbtn active" data-v="district">Districts (15)</button>
-        <button type="button" class="segbtn" data-v="neighbourhood">Neighbourhoods (407)</button>
-      </span>
-    </div>
-    <details class="helpnote"><summary>ℹ How to read this heatmap</summary>
-    <div class="note">Grid heatmap for historical review: each row is a
-      <b>district or neighbourhood</b> (Boundary buttons), each column a <b>month</b> of the
-      chosen Day range, cell color = count of <b>open weather-related 311 reports</b> that month
-      — flooding/ponding, drainage, snow, windrows, plowing/blading, icy conditions and extreme
-      weather (darker = more). <b>Open reports only</b> (user choice), so months older than a few
-      weeks read light — most reports close over time. The search box filters BOTH this heatmap
-      and the station table below by district/neighbourhood; clicking a row label does the same.
-      Hover any cell for the exact count. <b>Gauge severity has no public history</b> — the
-      rainfall feed is a live snapshot, so a severity-by-month grid can't be built (this dashboard
-      never invents history); open 311 volume is the closest published month-by-month signal.</div>
-    </details>
-    <div class="hmwrap"><div id="hmGrid" class="hmgrid"></div></div>
-    <div class="note" id="hmStatus">loading heatmap…</div>
-  </div>
   <div class="panel">
     <h2>Stations ranked by severity</h2>
     <div class="note" id="trendNote">Trend requires 2+ feed publishes — leave this page open; it refreshes every 5 min.</div>
@@ -589,6 +549,32 @@
       311 by month, and the 311 area comparison. The <b>category ticks</b> drive the two 311
       charts (precipitation is climate data, not 311). The EPCOR snapshot is live-only with no
       history, so it ignores both — its caption says so.</div></details>
+  </div>
+  <div class="panel" id="statHeatPanel" style="margin-bottom:14px">
+    <h2>Historical patterns — open weather-related 311 reports per month</h2>
+    <div class="mapmode-row">
+      <span class="searchwrap">
+        <input id="hmSearch" type="search" placeholder="🔍 filter this heatmap by district / neighbourhood" autocomplete="off" spellcheck="false">
+      </span>
+      <label>Boundary</label>
+      <span class="segwrap" id="hmBoundaryBtns">
+        <button type="button" class="segbtn active" data-v="district">Districts (15)</button>
+        <button type="button" class="segbtn" data-v="neighbourhood">Neighbourhoods (407)</button>
+      </span>
+    </div>
+    <details class="helpnote"><summary>ℹ How to read this heatmap</summary>
+    <div class="note">Grid heatmap for historical review: each row is a
+      <b>district or neighbourhood</b> (Boundary buttons), each column a <b>month</b>, cell color =
+      count of <b>open weather-related 311 reports</b> that month (darker = more). Follows the
+      <b>date range and category ticks in the Filters above</b> — the same filters as the other
+      charts. <b>Open reports only</b>, so months older than a few weeks read light — most reports
+      close over time. The search box (or clicking a row label) narrows this heatmap by area; hover
+      any cell for the exact count. <b>Gauge severity has no public history</b> — the rainfall feed
+      is a live snapshot, so a severity-by-month grid can't be built (this dashboard never invents
+      history); open 311 volume is the closest published month-by-month signal.</div>
+    </details>
+    <div class="hmwrap"><div id="hmGrid" class="hmgrid"></div></div>
+    <div class="note" id="hmStatus">loading heatmap…</div>
   </div>
   <div class="statgrid">
   <div class="panel">
@@ -1701,60 +1687,51 @@ function toggleDistrictSelection(d){
   syncFilterChecks();   // reflect in the side-panel checkboxes
   onFilterChange();
 }
-// heatmap row-label click → set the shared Station-tab search (filters table + heatmap);
-// clicking the active row clears it. Independent of the Maps-tab map selection.
+// heatmap row-label click → narrow THIS heatmap to that area; clicking the active row clears it.
 document.getElementById("hmGrid").addEventListener("click", e=>{
   const lab = e.target.closest(".hm-lab");
   if (!lab || !lab.dataset.d) return;
-  const el = document.getElementById("stnSearch");
-  el.value = (stnQuery === lab.dataset.d.toLowerCase())? "" : lab.dataset.d;
-  stnQuery = el.value.trim().toLowerCase();
-  rerender(); renderHeatmap();
+  const el = document.getElementById("hmSearch");
+  el.value = (hmQuery === lab.dataset.d.toLowerCase())? "" : lab.dataset.d;
+  hmQuery = el.value.trim().toLowerCase();
+  renderHeatmap();
 });
 
 // ---------- historical heatmap: 311 reports per month by district/neighbourhood ----------
 // One SoQL fetch per date range (group by neighbourhood + month); boundary/district changes
 // re-render client-side from the same rows. Severity-by-month is NOT offered here because the
 // gauge feed is a snapshot with no published history — 311 volume is the month-by-month signal.
-// Fully independent of the Maps-tab density controls (user: tabs are separate). The heatmap has
-// its OWN day range (hmFrom/hmTo), boundary (hmBoundary), and a text search (stnQuery) that is
-// SHARED with the station table below. 311 is OPEN-only (baked into WEATHER311_WHERE).
-let hmData = null, hmReqId = 0;
-let hmFrom = "", hmTo = "", hmBoundary = "district", stnQuery = "";
+// Fully independent of the Maps-tab density controls (user: tabs are separate). The heatmap now
+// lives on the Stats tab and SHARES the Stats Filters' date range (stat311From/To) and category
+// ticks (statCatClause) with the other charts; it keeps its own boundary toggle (hmBoundary) and a
+// heatmap-only text search (hmQuery). 311 is OPEN-only. `stnQuery` stays "" — the station table is
+// no longer text-filtered (the search moved to the heatmap on the Stats tab).
+let hmData = null, hmReqId = 0, hmLoaded = false;
+let hmBoundary = "district", hmQuery = "", stnQuery = "";
+function hmFromVal(){ return document.getElementById("stat311From").value || DATA_311_START_DATE; }
+function hmToVal(){ return document.getElementById("stat311To").value || todayLocalDate(); }
 function hmMonths(){
   const out = [];
-  const d = new Date(hmFrom.slice(0,7)+"-01T00:00:00");
-  const end = new Date(hmTo.slice(0,7)+"-01T00:00:00");
+  const d = new Date(hmFromVal().slice(0,7)+"-01T00:00:00");
+  const end = new Date(hmToVal().slice(0,7)+"-01T00:00:00");
   while (d <= end){ out.push(d.toISOString().slice(0,7)); d.setMonth(d.getMonth()+1); }
   return out;
 }
-function hmCutoff(){ return (hmFrom || DATA_311_START_DATE) + "T00:00:00.000"; }
-function hmUntil(){ const d = new Date((hmTo||todayLocalDate())+"T00:00:00"); d.setDate(d.getDate()+1); return d.toISOString().split(".")[0]; }
-function hmRangeLabel(){ const fmt=s=>new Date(s+"T00:00:00").toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"}); return `${fmt(hmFrom)} – ${fmt(hmTo)}`; }
-function hmApplyPreset(key){
-  const today = todayLocalDate(); let from;
-  if (DENSITY_PRESETS[key]==null) from = DATA_311_START_DATE;
-  else { const d=new Date(today+"T00:00:00"); d.setDate(d.getDate()-DENSITY_PRESETS[key]); from=d.toISOString().slice(0,10); if (from<DATA_311_START_DATE) from=DATA_311_START_DATE; }
-  hmFrom=from; hmTo=today;
-  document.getElementById("hmFrom").value=from; document.getElementById("hmTo").value=today;
-}
-function initHmRange(){
-  const today=todayLocalDate();
-  const f=document.getElementById("hmFrom"), t=document.getElementById("hmTo");
-  f.min=DATA_311_START_DATE; f.max=today; t.min=DATA_311_START_DATE; t.max=today;
-  hmApplyPreset("365d");
-}
+function hmCutoff(){ return hmFromVal() + "T00:00:00.000"; }
+function hmUntil(){ const d = new Date(hmToVal()+"T00:00:00"); d.setDate(d.getDate()+1); return d.toISOString().split(".")[0]; }
+function hmRangeLabel(){ const fmt=s=>new Date(s+"T00:00:00").toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"}); return `${fmt(hmFromVal())} – ${fmt(hmToVal())}`; }
 function loadHeatmap(){
   const my = ++hmReqId;
   const st = document.getElementById("hmStatus");
   st.textContent = "loading heatmap…";
   const url = "https://data.edmonton.ca/resource/q7ua-agfg.json?$select=neighbourhood,date_trunc_ym(date_created) as ym,count(*) as n"
-    + "&$where=" + encodeURIComponent(`date_created>='${hmCutoff()}' AND date_created<'${hmUntil()}' AND ${WEATHER311_WHERE}`)
+    + "&$where=" + encodeURIComponent(`date_created>='${hmCutoff()}' AND date_created<'${hmUntil()}' AND ${statCatClause()} AND upper(request_status)='OPEN'`)
     + "&$group=neighbourhood,ym&$limit=50000";
   fetch(url).then(r=>r.json()).then(rows=>{
     if (my !== hmReqId) return; // superseded by a newer range — discard
     hmData = rows.filter(r=>r.neighbourhood && r.ym)
       .map(r=>({nei:r.neighbourhood, ym:r.ym.slice(0,7), n:+r.n||0}));
+    hmLoaded = true;
     loadNeighbourhoods(renderHeatmap); // rollup/filter needs the nei→district mapping
   }).catch(e=>{ if (my===hmReqId){ console.warn("heatmap query failed", e);
     st.textContent = "heatmap unavailable — 311 query failed"; } });
@@ -1764,7 +1741,7 @@ function renderHeatmap(){
   if (!hmData || !grid) return;
   const months = hmMonths();
   const nei2d = {}; neiFeats.forEach(f=>{ nei2d[f.properties.name] = f.properties.district; });
-  const q = stnQuery; // shared search (matches the visible row name)
+  const q = hmQuery; // heatmap-only search (matches the visible row name)
   const cells = {}, totals = {};
   hmData.forEach(r=>{
     const key = hmBoundary==="district" ? nei2d[r.nei] : r.nei;
@@ -1784,7 +1761,7 @@ function renderHeatmap(){
   keys.forEach(k=>{
     const name = lab(k), active = q && name.toLowerCase()===q;
     html += `<div class="hm-lab${active? " active":""}" data-d="${name}"
-      title="${name} — ${totals[k].toLocaleString()} open total · click to filter table + heatmap">${name}</div>`;
+      title="${name} — ${totals[k].toLocaleString()} open total · click to filter this heatmap">${name}</div>`;
     html += months.map(m=>{
       const v = cells[k][m]||0;
       return `<div class="hm-cell" style="background:${v? densityColor(v,max) : "var(--grid)"}"
@@ -1797,30 +1774,18 @@ function renderHeatmap(){
     ${capped? ` · showing top ${CAP} by total (${capped} more — search to narrow)`:""}
     · darkest cell = ${max.toLocaleString()} open/month`;
 }
-// Station-tab heatmap controls (independent of the Maps tab)
-initHmRange();
-document.getElementById("hmPresetSel").addEventListener("change", e=>{
-  if (e.target.value==="custom") return;
-  hmApplyPreset(e.target.value); loadHeatmap();
-});
-document.getElementById("hmFrom").addEventListener("change", e=>{
-  hmFrom=e.target.value; if (hmFrom>hmTo){ hmTo=hmFrom; document.getElementById("hmTo").value=hmTo; }
-  document.getElementById("hmPresetSel").value="custom"; loadHeatmap();
-});
-document.getElementById("hmTo").addEventListener("change", e=>{
-  hmTo=e.target.value; if (hmFrom>hmTo){ hmFrom=hmTo; document.getElementById("hmFrom").value=hmFrom; }
-  document.getElementById("hmPresetSel").value="custom"; loadHeatmap();
-});
+// Stats-tab heatmap controls: boundary toggle + heatmap-only search. The date range and category
+// ticks come from the shared Stats Filters above (loadHeatmap is called by loadStats + those
+// filter handlers), so the heatmap tracks the other charts.
 document.querySelectorAll("#hmBoundaryBtns .segbtn").forEach(b=>b.addEventListener("click", ()=>{
   hmBoundary=b.dataset.v;
   document.querySelectorAll("#hmBoundaryBtns .segbtn").forEach(x=>x.classList.toggle("active", x===b));
   renderHeatmap();
 }));
-document.getElementById("stnSearch").addEventListener("input", e=>{
-  stnQuery = e.target.value.trim().toLowerCase();
-  rerender(); renderHeatmap(); // shared: filters BOTH the table and the heatmap
+document.getElementById("hmSearch").addEventListener("input", e=>{
+  hmQuery = e.target.value.trim().toLowerCase();
+  renderHeatmap();
 });
-loadHeatmap();
 
 // crew task card: what a dispatched crew is driving into — computed at popup-open time
 // never run before the polygons exist — districtOf would return null and the cache
@@ -2898,7 +2863,7 @@ function pctBarChart({rows}){
 }
 const MONTHS_S = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 let statLoaded = {precip:"", e311:false, cmp:false};
-function loadStats(){ loadStatPrecip(); loadStat311(); loadStatCmp(); loadStatEpcor(); }
+function loadStats(){ loadStatPrecip(); loadStat311(); loadStatCmp(); loadStatEpcor(); if (!hmLoaded) loadHeatmap(); }
 
 // Chart A — monthly rainfall OR snowfall, LINKED to the shared date range (user request):
 // bars = the latest year in the range, monthly; line = same-month average of the earlier years
@@ -3019,11 +2984,11 @@ document.getElementById("statAreaSel").addEventListener("change", e=>{ statArea.
 ["stat311From","stat311To"].forEach(id=>document.getElementById(id).addEventListener("change", ()=>{
   const f=document.getElementById("stat311From"), t=document.getElementById("stat311To");
   if (f.value && t.value && f.value > t.value) (id==="stat311From"? t : f).value = document.getElementById(id).value;
-  loadStatPrecip(); loadStat311(true); loadStatCmp(true); // date range links all three charts
+  loadStatPrecip(); loadStat311(true); loadStatCmp(true); loadHeatmap(true); // date range links all charts + heatmap
 }));
-// top category filter drives BOTH 311 charts (the monthly open/closed + the composition compare)
+// top category filter drives BOTH 311 charts (monthly open/closed + composition compare) and the heatmap
 document.querySelectorAll('#statCatBtns input[type=checkbox]').forEach(cb=>
-  cb.addEventListener("change", ()=>{ loadStat311(true); loadStatCmp(true); }));
+  cb.addEventListener("change", ()=>{ loadStat311(true); loadStatCmp(true); loadHeatmap(true); }));
 
 // Chart B2 — district / neighbourhood comparison: a 100%-STACKED bar per area showing the
 // category MIX (flood/snow/extreme share), with the raw total at the right. Follows the shared
