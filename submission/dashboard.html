@@ -219,9 +219,11 @@
 
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted);
-    text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--grid)}
+    text-align:left;font-weight:600;padding:6px 6px;border-bottom:1px solid var(--grid);
+    vertical-align:bottom;line-height:1.2}
   th{position:relative}
-  th[data-k]{cursor:pointer;user-select:none;white-space:nowrap}
+  /* headers wrap within their fixed column width instead of overflowing into the next column */
+  th[data-k]{cursor:pointer;user-select:none;white-space:normal;overflow-wrap:break-word}
   .colrz{position:absolute;right:-3px;top:0;bottom:0;width:7px;cursor:col-resize;z-index:2}
   .colrz:hover,.colrz.active{background:var(--seq-450);opacity:.5}
   th[data-k]:hover{color:var(--ink-1)}
@@ -488,7 +490,7 @@
     <div style="overflow-x:auto">
     <table id="tbl" style="table-layout:fixed">
       <thead><tr>
-        <th data-k="station" style="width:58px">Station</th>
+        <th data-k="station" style="width:66px">Station</th>
         <th data-k="district" style="width:104px">District</th>
         <th style="width:88px">311 · closures</th>
         <th class="num" data-k="mm" style="width:112px" id="th24h">24h rain gauge (mm)</th>
